@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinShield MLRO: Compliance Officer Training Game</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="game-shell">
+    <section class="hero-card" aria-labelledby="game-title">
+      <p class="eyebrow">Interactive training simulation</p>
+      <h1 id="game-title">FinShield MLRO: The Compliance Officer Life-Cycle</h1>
+      <p class="intro">
+        Interview for a regulated fintech role, build the second line of defence,
+        investigate financial-crime alerts, report to senior management, and face
+        the regulator. Decisions matter: your integrity, risk control, regulator
+        confidence, morale, and budget change as you play.
+      </p>
+      <div class="hero-actions">
+        <button id="start-button" type="button">Start new career</button>
+        <button id="restart-button" type="button" class="secondary">Restart</button>
+      </div>
+    </section>
+
+    <section class="dashboard" aria-label="Game dashboard">
+      <article class="panel profile-panel">
+        <h2>Role hierarchy</h2>
+        <ol id="hierarchy-list" class="hierarchy-list"></ol>
+      </article>
+
+      <article class="panel score-panel">
+        <h2>Decision scorecard</h2>
+        <div id="stats-grid" class="stats-grid"></div>
+      </article>
+    </section>
+
+    <section class="panel story-panel" aria-live="polite">
+      <div class="chapter-label" id="chapter-label">Awaiting start</div>
+      <h2 id="scene-title">Welcome to FinShield Bank & Payments</h2>
+      <div id="scene-body" class="scene-body">
+        <p>
+          You are about to experience the life-cycle of a compliance officer and
+          Money Laundering Reporting Officer (MLRO) in a fast-growing fintech
+          preparing for bank partnership scrutiny. Press start when you are ready.
+        </p>
+      </div>
+      <div id="duties-box" class="duties-box" hidden>
+        <h3>Duties in focus</h3>
+        <ul id="duties-list"></ul>
+      </div>
+      <div id="choices" class="choices"></div>
+    </section>
+
+    <section class="panel log-panel">
+      <h2>Career log</h2>
+      <ol id="career-log" class="career-log"></ol>
+    </section>
+  </main>
+
+  <template id="choice-template">
+    <button type="button" class="choice-card">
+      <span class="choice-title"></span>
+      <span class="choice-detail"></span>
+    </button>
+  </template>
+
+  <script src="game.js"></script>
+</body>
+</html>
