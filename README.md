@@ -1,26 +1,37 @@
-# Compliance Officer / MLRO Simulator
+# Compliance Empire
 
-A browser-based, text-first management and investigation simulator where the player starts as a junior compliance analyst and progresses through a full compliance/MLRO career.
+A browser-based, text-first strategy-management game about Compliance, AML, Risk, Governance, Fraud, and Financial Crime. It is designed to be fun first and educational second: the player is not choosing a single correct training answer, but surviving pressure from criminals, regulators, executives, investors, customers, employees, media, and the board.
 
 ## What is included
 
 - A career ladder from Junior Compliance Analyst to Compliance Officer, Deputy MLRO, MLRO, Head of Compliance, CCO, Group MLRO, Regulator, and Compliance Consultancy Owner.
 - Institution selection across Retail Bank, Crypto Exchange, Investment Firm, Money Service Business, FinTech, and Casino, each with different revenue, budget, risk, and typology pressure.
-- A daily management loop: alerts, customer reviews, investigations, employee management, regulatory requests, controls, board reporting, end day, and KPI review.
-- A customer database review system with customer profiles, source of wealth, source of funds, corporate structures, linked entities, adverse media, and hidden risk variables.
-- Investigation-board gameplay using evidence chips for passports, corporate registries, blockchain wallets, adverse media, transaction patterns, and regulator requests.
-- Transaction monitoring and MLRO decision scenarios covering structuring, PEP changes, missed SARs, sanctions updates, crypto mixers, fraud victims, correspondent banking, laundering networks, and board pressure.
-- Employee management with hiring, team skills, traits, morale, stress, training courses, certifications, and workload effects.
+- A strategy loop where information creates decisions, decisions change hidden systems, hidden systems create future events, and future events reference old decisions.
+- A long-term memory engine that stores major investigations, onboarding decisions, SAR choices, board reports, CPD, expansion moves, employee events, and delayed consequences.
+- A dynamic consequence engine covering regulatory trust, board confidence, employee morale, financial performance, customer satisfaction, operational efficiency, crime exposure, reputation, backlog, findings, and whistleblower risk.
+- Mini investigation gameplay: review transactions, review KYC, review source of wealth, interview relationship managers, request documentation, then decide whether to close, escalate, freeze, file SAR, remediate, or compromise.
+- Criminal adaptation across structuring, trade-based money laundering, sanctions evasion, crypto mixing, mule networks, shell companies, terrorist financing, human trafficking, corruption, and bribery.
+- Individual employee characters with skill, productivity, stress, morale, traits, burnout, resignation, and whistleblower-style events.
+- Board politics with directors who have different personalities: growth-oriented CEO, aggressive investor, former regulator, former banker, and audit committee chair.
+- Global jurisdiction expansion for the United States, United Kingdom, European Union, UAE, Bahrain, Singapore, and Hong Kong, each adding local reporting and sanctions complexity.
+- CPD, certification, conference, and knowledge-tree systems across AML, Fraud, Compliance, Risk, Governance, Crypto, and Sanctions branches that unlock actual strategic capability.
 - Technology and budget decisions for advanced screening, AI alert triage, blockchain analytics, case management, and automated KYC.
-- KPI dashboard, risk heat map, regulator trust, reputation, revenue, risk exposure, customer satisfaction, employee morale, board confidence, SARs, findings, and achievements.
-- A hidden financial-crime ecosystem that grows with risk, revenue, institution type, backlogs, and control maturity.
+- KPI dashboard, risk heat map, regulator trust, reputation, revenue, risk exposure, customer satisfaction, employee morale, board confidence, SARs, findings, media pressure, achievements, and historical memory.
+
+## Design philosophy
+
+The game should create stories like:
+
+> “I approved a customer in 2026, ignored an analyst warning in 2027, lost an investigator in 2028, received a whistleblower complaint in 2029, and faced enforcement in 2030 because of decisions I made years ago.”
+
+No action is universally correct. Rejecting a risky client may improve regulatory trust and reduce crime exposure, but it can damage revenue, customer growth, and board support. Approving growth may save the quarter and create a scandal years later.
 
 ## Where the game files are
 
 The playable game is in this repository folder. You should see these files in the project root:
 
 - `index.html` — the page you open in a browser.
-- `game.js` — the scenarios, choices, scoring, career progression, employees, controls, and game logic.
+- `game.js` — the strategy systems, scenarios, state, hidden memory, criminal adaptation, employees, board politics, jurisdictions, CPD, choices, scoring, and rendering.
 - `styles.css` — the visual styling.
 - `README.md` — these instructions.
 
@@ -51,11 +62,11 @@ Then visit `http://localhost:8000` in your browser.
 ## How to play
 
 1. Click **Start new career**.
-2. Choose an institution type. This changes the starting budget, revenue, risk exposure, and typology pressure.
-3. Pass the interview by choosing how you will balance growth and controls.
-4. Use the daily command briefing to open cases, manage employees, buy controls, review customer files, or end the day.
-5. In cases, read the scenario, inspect the investigation-board evidence, review the training concepts, and choose a decision.
-6. Watch the KPI dashboard, risk heat map, queues, team roster, controls, achievements, and career log update after every decision.
-7. Every fifth day, complete monthly board reporting.
-8. Progress through the career ladder by gaining XP from good investigations, training, governance, reporting, and strategic decisions.
-9. Replay with a different institution or risk appetite to discover different outcomes.
+2. Choose an institution type. This changes starting budget, revenue, risk exposure, and criminal typology pressure.
+3. Pass the interview by choosing how you will balance growth, controls, and independence.
+4. Use the command briefing to open investigations, manage employees, buy controls, review customers, manage board/global strategy, end the day, or complete monthly board reporting.
+5. In investigations, collect evidence first if you want a more defensible decision. Each action costs time, budget, and capacity.
+6. Watch hidden and visible systems evolve: risk heat map, criminal adaptation, employees, board relationships, media, delayed consequences, and long-term memory.
+7. Attend conferences and training to maintain CPD, unlock certifications, and grow knowledge-tree capabilities.
+8. Expand into new jurisdictions only when you can handle extra regulatory complexity.
+9. Replay with a different institution or risk appetite to generate a different compliance empire story.

@@ -604,6 +604,50 @@ const courseCatalog = [
   { name: 'Fraud & Vulnerable Customer Workshop', cost: 6, benefit: { customerSatisfaction: 5, riskExposure: -5, reputation: 3 }, xp: 35 }
 ];
 
+
+const boardMembers = [
+  { id: 'ceo', name: 'Nadia Holt', role: 'CEO', personality: 'Growth-oriented operator', wants: 'Revenue, speed, customer growth' },
+  { id: 'investor', name: 'Victor Lane', role: 'Aggressive Investor Director', personality: 'Impatient capital allocator', wants: 'Financial performance and expansion' },
+  { id: 'formerRegulator', name: 'Eleanor Price', role: 'Former Regulator', personality: 'Risk hawk', wants: 'Evidence, candour, strong controls' },
+  { id: 'formerBanker', name: 'Marcus Bell', role: 'Former Banker', personality: 'Relationship defender', wants: 'Pragmatic risk appetite and client retention' },
+  { id: 'auditChair', name: 'Priya Menon', role: 'Audit Committee Chair', personality: 'Governance purist', wants: 'Documented decisions, audit trails, remediation dates' }
+];
+
+const jurisdictions = {
+  unitedStates: { name: 'United States', reporting: 'FinCEN SAR', sanctions: 'OFAC', complexity: 18, unlockCost: 18 },
+  unitedKingdom: { name: 'United Kingdom', reporting: 'NCA SAR / DAML', sanctions: 'OFSI', complexity: 14, unlockCost: 0 },
+  europeanUnion: { name: 'European Union', reporting: 'FIU reporting', sanctions: 'EU restrictive measures', complexity: 16, unlockCost: 14 },
+  uae: { name: 'UAE', reporting: 'goAML STR/SAR', sanctions: 'Local and UN lists', complexity: 15, unlockCost: 12 },
+  bahrain: { name: 'Bahrain', reporting: 'FIU STR', sanctions: 'Local and UN lists', complexity: 12, unlockCost: 10 },
+  singapore: { name: 'Singapore', reporting: 'STRO STR', sanctions: 'MAS requirements', complexity: 17, unlockCost: 16 },
+  hongKong: { name: 'Hong Kong', reporting: 'JFIU STR', sanctions: 'Local and UN lists', complexity: 15, unlockCost: 14 }
+};
+
+const knowledgeBranches = {
+  aml: { name: 'AML', unlocks: ['Enhanced customer risk model', 'Layering pattern library', 'Advanced SAR narrative builder'] },
+  fraud: { name: 'Fraud', unlocks: ['Vulnerable customer playbook', 'Scam reimbursement framework', 'APP fraud interdiction'] },
+  compliance: { name: 'Compliance', unlocks: ['Obligation map', 'Policy attestation engine', 'Regulatory change tracker'] },
+  risk: { name: 'Risk', unlocks: ['Enterprise risk appetite simulator', 'Stress testing', 'Scenario loss modelling'] },
+  governance: { name: 'Governance', unlocks: ['Board influence packs', 'Committee escalation routes', 'SMF accountability map'] },
+  crypto: { name: 'Crypto', unlocks: ['Mixer exposure scoring', 'Wallet cluster graphing', 'Chain-hop investigation actions'] },
+  sanctions: { name: 'Sanctions', unlocks: ['True-match triage', 'License escalation workflow', 'Rapid rescreening command'] }
+};
+
+const investigationActions = [
+  { id: 'transactions', title: 'Review Transactions', detail: 'Map flow of funds, velocity, counterparties, jurisdictions, and structuring.', cost: { time: 1, budget: 1, capacity: 1 }, effects: { riskExposure: -1, backlog: 1, xp: 12 }, evidence: 'Transaction flow map' },
+  { id: 'kyc', title: 'Review KYC', detail: 'Check identity, beneficial ownership, expected activity, risk rating, and review history.', cost: { time: 1, budget: 1, capacity: 1 }, effects: { regulatoryScore: 1, backlog: 1, xp: 12 }, evidence: 'KYC discrepancy note' },
+  { id: 'wealth', title: 'Review Source of Wealth', detail: 'Test wealth narrative, independent documents, entity ownership, and inconsistencies.', cost: { time: 2, budget: 2, capacity: 2 }, effects: { regulatoryScore: 2, riskExposure: -2, backlog: 1, xp: 18 }, evidence: 'Source-of-wealth evidence matrix' },
+  { id: 'relationshipManager', title: 'Interview Relationship Manager', detail: 'Pressure-test commercial explanations and identify relationship conflicts.', cost: { time: 1, budget: 0, capacity: 1 }, effects: { boardConfidence: -1, xp: 10 }, evidence: 'Relationship-manager interview note' },
+  { id: 'documentation', title: 'Request Documentation', detail: 'Ask for invoices, contracts, wallet ownership, wealth evidence, or customer explanations.', cost: { time: 2, budget: 1, capacity: 1 }, effects: { customerSatisfaction: -2, regulatoryScore: 2, xp: 14 }, evidence: 'Customer documentation request' }
+];
+
+const criminalTypologies = ['Structuring', 'Trade-Based Money Laundering', 'Sanctions Evasion', 'Crypto Mixing', 'Money Mule Networks', 'Shell Companies', 'Terrorist Financing', 'Human Trafficking', 'Corruption', 'Bribery'];
+
+const mediaTemplates = {
+  praise: ['Bank praised for AML controls', 'Compliance turnaround wins market confidence', 'Regulator notes improving governance culture'],
+  concern: ['Regulator launches investigation into controls', 'Major sanctions breach fears hit customer trust', 'Whistleblower alleges ignored AML warnings']
+};
+
 const initialState = {
   scene: 'companySelect',
   companyKey: null,
@@ -639,6 +683,48 @@ const initialState = {
     sars: 0,
     findings: 0
   },
+  year: 2026,
+  longTermMemory: [],
+  delayedEvents: [],
+  media: [],
+  certifications: [],
+  cpdHours: 0,
+  knowledge: {
+    aml: 0,
+    fraud: 0,
+    compliance: 0,
+    risk: 0,
+    governance: 0,
+    crypto: 0,
+    sanctions: 0
+  },
+  unlockedJurisdictions: ['unitedKingdom'],
+  criminalAdaptation: {
+    Structuring: 20,
+    'Trade-Based Money Laundering': 20,
+    'Sanctions Evasion': 20,
+    'Crypto Mixing': 20,
+    'Money Mule Networks': 20,
+    'Shell Companies': 20,
+    'Terrorist Financing': 20,
+    'Human Trafficking': 20,
+    Corruption: 20,
+    Bribery: 20
+  },
+  boardRelationships: {
+    ceo: 55,
+    investor: 55,
+    formerRegulator: 55,
+    formerBanker: 55,
+    auditChair: 55
+  },
+  currentInvestigation: {
+    caseIndex: null,
+    actions: [],
+    evidence: [],
+    timeSpent: 0,
+    spend: 0
+  },
   log: []
 };
 
@@ -662,6 +748,9 @@ const elements = {
   teamList: document.querySelector('#team-list'),
   systemsList: document.querySelector('#systems-list'),
   queueList: document.querySelector('#queue-list'),
+  boardList: document.querySelector('#board-list'),
+  memoryList: document.querySelector('#memory-list'),
+  mediaList: document.querySelector('#media-list'),
   careerLog: document.querySelector('#career-log'),
   choiceTemplate: document.querySelector('#choice-template')
 };
@@ -693,9 +782,55 @@ function hasControl(nameOrId) {
   });
 }
 
+function getTimeLabel() {
+  return `Year ${state.year}, Day ${state.day}`;
+}
+
 function addLog(message) {
-  state.log.unshift(`Day ${state.day}: ${message}`);
-  state.log = state.log.slice(0, 16);
+  state.log.unshift(`${getTimeLabel()}: ${message}`);
+  state.log = state.log.slice(0, 18);
+}
+
+function remember(type, subject, decision, consequence, severity = 'medium') {
+  state.longTermMemory.unshift({
+    year: state.year,
+    day: state.day,
+    type,
+    subject,
+    decision,
+    consequence,
+    severity
+  });
+  state.longTermMemory = state.longTermMemory.slice(0, 30);
+}
+
+function scheduleDelayedEvent(event) {
+  state.delayedEvents.push({
+    dueYear: state.year + event.delayYears,
+    dueDay: state.day,
+    ...event
+  });
+}
+
+function addMedia(headline, tone = 'neutral') {
+  state.media.unshift({ year: state.year, day: state.day, headline, tone });
+  state.media = state.media.slice(0, 10);
+}
+
+function adjustBoardRelationships(effects = {}) {
+  const revenue = effects.revenue || 0;
+  const risk = effects.riskExposure || 0;
+  const regulatory = effects.regulatoryScore || 0;
+  const integrity = effects.integrity || 0;
+  state.boardRelationships.ceo = clamp(state.boardRelationships.ceo + Math.sign(revenue) * 3 - Math.sign(regulatory) * -1, 0, 100);
+  state.boardRelationships.investor = clamp(state.boardRelationships.investor + Math.sign(revenue) * 4 - Math.sign(risk) * 2, 0, 100);
+  state.boardRelationships.formerRegulator = clamp(state.boardRelationships.formerRegulator + Math.sign(regulatory) * 4 - Math.sign(risk) * 3 + Math.sign(integrity) * 2, 0, 100);
+  state.boardRelationships.formerBanker = clamp(state.boardRelationships.formerBanker + Math.sign(revenue) * 2 + Math.sign(state.stats.customerSatisfaction - 50), 0, 100);
+  state.boardRelationships.auditChair = clamp(state.boardRelationships.auditChair + Math.sign(regulatory) * 3 + Math.sign(integrity) * 3, 0, 100);
+}
+
+function resetInvestigation(caseIndex = state.currentCaseIndex) {
+  state.currentInvestigation = { caseIndex, actions: [], evidence: [], timeSpent: 0, spend: 0 };
 }
 
 function applyEffects(effects = {}) {
@@ -714,6 +849,7 @@ function applyEffects(effects = {}) {
       state.queues[key] = Math.max(0, state.queues[key] + value);
     }
   });
+  adjustBoardRelationships(effects);
   updateCareerLevel();
   evaluateAchievements();
 }
@@ -737,7 +873,10 @@ function evaluateAchievements() {
     { id: 'zeroBacklog', label: 'Reduced alert backlog to zero', test: () => state.queues.alerts === 0 },
     { id: 'trustedBoard', label: 'Won board confidence', test: () => state.stats.boardConfidence >= 80 },
     { id: 'globalLeader', label: 'Reached Group MLRO level', test: () => state.levelIndex >= 6 },
-    { id: 'consultant', label: 'Unlocked compliance consultancy endgame', test: () => state.levelIndex >= 8 }
+    { id: 'consultant', label: 'Unlocked compliance consultancy endgame', test: () => state.levelIndex >= 8 },
+    { id: 'historian', label: 'Created 10 long-term memory records', test: () => state.longTermMemory.length >= 10 },
+    { id: 'globalExpansion', label: 'Expanded into 3 jurisdictions', test: () => state.unlockedJurisdictions.length >= 3 },
+    { id: 'knowledgeLeader', label: 'Unlocked 5 knowledge capabilities', test: () => Object.values(state.knowledge).reduce((sum, value) => sum + value, 0) >= 5 }
   ];
 
   achievementChecks.forEach(achievement => {
@@ -757,16 +896,30 @@ function selectCompany(companyKey) {
   state.stats.budget = company.startingBudget;
   state.scene = 'interview';
   addLog(`You joined a ${company.name}. Challenge profile: ${company.challenge}.`);
+  remember('Career', company.name, 'Accepted role', `Institution risk profile set: ${company.challenge}.`, 'low');
+  addMedia(`${company.name} appoints new compliance leadership`, 'neutral');
   render();
 }
 
 function applyChoice(choice) {
+  const caseItem = state.scene === 'casework' ? getCurrentCase() : null;
+  const appliedEffects = choice.requires && !hasControl(choice.requires) ? (choice.fallback || {}) : (choice.effects || {});
+
   if (choice.requires && !hasControl(choice.requires)) {
     applyEffects(choice.fallback || {});
     addLog(choice.fallback?.log || `You lacked ${choice.requires}, so the plan underperformed.`);
   } else {
     applyEffects(choice.effects || {});
     addLog(choice.log);
+  }
+
+  if (caseItem) {
+    remember('Investigation', caseItem.title, choice.title, choice.log, caseItem.severity.toLowerCase());
+    adaptCriminals(caseItem, choice, appliedEffects);
+    scheduleCaseConsequence(caseItem, choice, appliedEffects);
+    resetInvestigation(state.currentCaseIndex + 1);
+  } else if (choice.log) {
+    remember('Decision', choice.title, choice.detail, choice.log, 'medium');
   }
 
   if (choice.next) {
@@ -779,9 +932,79 @@ function applyChoice(choice) {
   render();
 }
 
+function performInvestigationAction(actionId) {
+  const action = investigationActions.find(item => item.id === actionId);
+  if (!action) return;
+  const alreadyDone = state.currentInvestigation.actions.includes(actionId);
+  if (alreadyDone) {
+    addLog(`${action.title} was already completed for this investigation.`);
+    render();
+    return;
+  }
+
+  state.currentInvestigation.actions.push(actionId);
+  state.currentInvestigation.evidence.push(action.evidence);
+  state.currentInvestigation.timeSpent += action.cost.time;
+  state.currentInvestigation.spend += action.cost.budget;
+  state.stats.budget = clamp(state.stats.budget - action.cost.budget, 0, 100);
+  state.queues.investigations = Math.max(0, state.queues.investigations + action.cost.capacity);
+  applyEffects(action.effects);
+  remember('Investigation action', getCurrentCase().title, action.title, `${action.evidence} added to the case file.`, 'low');
+  addLog(`${action.title} completed. Evidence added: ${action.evidence}.`);
+  render();
+}
+
+function adaptCriminals(caseItem, choice, effects = {}) {
+  const detected = (effects.riskExposure || 0) < 0 || (effects.sars || 0) > 0 || /SAR|Escalate|Coordinate|EDD|investigation/i.test(choice.title);
+  const typology = inferTypology(caseItem);
+  if (detected) {
+    state.criminalAdaptation[typology] = clamp(state.criminalAdaptation[typology] - 8, 0, 100);
+    const nextTypology = criminalTypologies[(criminalTypologies.indexOf(typology) + state.day + state.currentCaseIndex) % criminalTypologies.length];
+    state.criminalAdaptation[nextTypology] = clamp(state.criminalAdaptation[nextTypology] + 12, 0, 100);
+    addLog(`Criminal adaptation: pressure reduced in ${typology}, but criminals pivot toward ${nextTypology}.`);
+  } else {
+    state.criminalAdaptation[typology] = clamp(state.criminalAdaptation[typology] + 10, 0, 100);
+  }
+}
+
+function inferTypology(caseItem) {
+  const text = `${caseItem.title} ${caseItem.type} ${caseItem.lessons.join(' ')}`.toLowerCase();
+  if (text.includes('sanctions')) return 'Sanctions Evasion';
+  if (text.includes('crypto') || text.includes('mixer')) return 'Crypto Mixing';
+  if (text.includes('pep') || text.includes('corrupt')) return 'Corruption';
+  if (text.includes('fraud')) return 'Money Mule Networks';
+  if (text.includes('network') || text.includes('shell')) return 'Shell Companies';
+  if (text.includes('trade')) return 'Trade-Based Money Laundering';
+  return 'Structuring';
+}
+
+function scheduleCaseConsequence(caseItem, choice, effects = {}) {
+  const negativeControl = (effects.riskExposure || 0) > 5 || (effects.regulatoryScore || 0) < -5 || /Approve|Continue|Defend|Blame|Compromise|Replace/i.test(choice.title);
+  const positiveControl = (effects.riskExposure || 0) < -8 || (effects.regulatoryScore || 0) > 8 || /Self-report|Coordinate|Board|EDD|war room|remediation/i.test(choice.title);
+
+  if (negativeControl) {
+    scheduleDelayedEvent({
+      delayYears: 2 + (state.currentCaseIndex % 3),
+      title: `${caseItem.title} resurfaces`,
+      description: `A historical decision returns: “${choice.title}”. Regulators and media test whether the file evidence supports that judgement.`,
+      effects: { regulatoryScore: -10, reputation: -8, findings: 1, riskExposure: 8 },
+      memorySubject: caseItem.title
+    });
+  } else if (positiveControl) {
+    scheduleDelayedEvent({
+      delayYears: 1 + (state.currentCaseIndex % 2),
+      title: `${caseItem.title} becomes a positive precedent`,
+      description: `Your earlier “${choice.title}” decision is reused as evidence of mature governance in a future review.`,
+      effects: { regulatoryScore: 6, reputation: 5, boardConfidence: 4 },
+      memorySubject: caseItem.title
+    });
+  }
+}
+
 function startCareerAfterInterview(choice) {
   applyEffects(choice.effects);
   addLog(choice.log);
+  remember('Interview', 'Appointment panel', choice.title, choice.log, 'medium');
   state.scene = 'dailyReview';
   render();
 }
@@ -790,16 +1013,24 @@ function nextDay() {
   state.day += 1;
   state.dailyPhase = 0;
   if (state.day % 5 === 1) state.month += 1;
+  if (state.day > 1 && state.day % 10 === 1) {
+    state.year += 1;
+    state.cpdHours = Math.max(0, state.cpdHours - 8);
+    remember('Year end', 'Annual cycle', 'Closed year', 'CPD, board relationships, criminal adaptation, and historical decisions carried into the new year.', 'low');
+  }
 
   const company = getCompany();
   const bias = company?.riskBias || {};
-  const riskPressure = Math.ceil((state.stats.riskExposure + Object.values(bias).reduce((sum, value) => sum + value, 0) / 6) / 18);
+  const jurisdictionComplexity = state.unlockedJurisdictions.reduce((sum, id) => sum + (jurisdictions[id]?.complexity || 0), 0) / 12;
+  const adaptationPressure = Object.values(state.criminalAdaptation).reduce((sum, value) => sum + value, 0) / criminalTypologies.length / 12;
+  const riskPressure = Math.ceil((state.stats.riskExposure + Object.values(bias).reduce((sum, value) => sum + value, 0) / 6 + jurisdictionComplexity + adaptationPressure) / 18);
   const productivity = state.team.reduce((sum, employee) => sum + employee.productivity, 0);
-  const controlBonus = state.controls.length * 2;
+  const controlBonus = state.controls.length * 2 + Object.values(state.knowledge).reduce((sum, value) => sum + value, 0);
   const queueGrowth = Math.max(1, riskPressure - Math.floor((productivity + controlBonus) / 18));
 
   state.queues.alerts += queueGrowth + Math.floor(state.stats.revenue / 35);
   state.queues.onboarding += Math.max(0, Math.ceil(state.stats.revenue / 28) - Math.floor(productivity / 24));
+  state.queues.regulatorRequests += state.stats.regulatoryScore < 45 ? 1 : 0;
   state.queues.trainingDue += state.team.length > 2 ? 1 : 0;
   state.stats.riskExposure = clamp(state.stats.riskExposure + queueGrowth - state.controls.length, 0, 100);
   state.team = state.team.map(employee => ({
@@ -808,16 +1039,68 @@ function nextDay() {
     morale: clamp(employee.morale - Math.floor(employee.stress / 30) + (state.stats.employeeMorale > 70 ? 2 : 0), 0, 100)
   }));
 
+  processDelayedEvents();
+  triggerEmployeeEvents();
+  generateMediaCycle();
+  decayBoardPolitics();
+
   state.scene = 'dailyReview';
-  addLog('A new day begins. Criminal networks adapt to your controls and queues refresh.');
+  addLog('A new cycle begins. Criminals adapt, employees react, regulators watch, and old decisions continue to mature.');
   render();
+}
+
+function processDelayedEvents() {
+  const due = state.delayedEvents.filter(event => event.dueYear < state.year || (event.dueYear === state.year && event.dueDay <= state.day));
+  state.delayedEvents = state.delayedEvents.filter(event => !due.includes(event));
+  due.forEach(event => {
+    applyEffects(event.effects);
+    remember('Delayed consequence', event.memorySubject, event.title, event.description, 'high');
+    addLog(`Delayed consequence: ${event.description}`);
+    addMedia(event.effects.regulatoryScore < 0 ? mediaTemplates.concern[state.day % mediaTemplates.concern.length] : mediaTemplates.praise[state.day % mediaTemplates.praise.length], event.effects.regulatoryScore < 0 ? 'negative' : 'positive');
+  });
+}
+
+function triggerEmployeeEvents() {
+  const stressed = state.team.find(employee => employee.stress >= 85);
+  if (!stressed) return;
+
+  if (state.day % 3 === 0) {
+    remember('Employee event', stressed.name, 'Whistleblower warning', `${stressed.name} warned that workload pressure is creating missed red flags.`, 'high');
+    applyEffects({ regulatoryScore: -4, reputation: -3, employeeMorale: -5 });
+    addLog(`${stressed.name} raised a whistleblower-style concern about ignored workload risk.`);
+  } else if (state.day % 5 === 0 && state.team.length > 1) {
+    state.team = state.team.filter(employee => employee !== stressed);
+    applyEffects({ backlog: 4, employeeMorale: -7, regulatoryScore: -3 });
+    remember('Employee event', stressed.name, 'Resignation', `${stressed.name} resigned after sustained stress. Their open cases remain in the backlog.`, 'medium');
+    addLog(`${stressed.name} resigned due to burnout. Their investigations are now orphaned.`);
+  }
+}
+
+function generateMediaCycle() {
+  if (state.day % 4 !== 0) return;
+  if (state.stats.regulatoryScore >= 75 && state.stats.riskExposure < 45) {
+    addMedia(mediaTemplates.praise[state.day % mediaTemplates.praise.length], 'positive');
+    applyEffects({ reputation: 2, customerSatisfaction: 1 });
+  } else if (state.stats.regulatoryScore < 45 || state.stats.riskExposure > 75) {
+    addMedia(mediaTemplates.concern[state.day % mediaTemplates.concern.length], 'negative');
+    applyEffects({ reputation: -4, customerSatisfaction: -2 });
+  }
+}
+
+function decayBoardPolitics() {
+  if (state.day % 3 !== 0) return;
+  Object.keys(state.boardRelationships).forEach(id => {
+    const direction = state.boardRelationships[id] > 55 ? -1 : 1;
+    state.boardRelationships[id] = clamp(state.boardRelationships[id] + direction, 0, 100);
+  });
 }
 
 function endMonth() {
   const boardPenalty = state.queues.alerts > 30 ? -8 : 4;
   const regulatorPenalty = state.stats.riskExposure > 75 ? -8 : 3;
   applyEffects({ boardConfidence: boardPenalty, regulatoryScore: regulatorPenalty, xp: 30 });
-  addLog('Monthly board reporting complete: KPIs, risk heat map, SAR statistics, findings, budget, and remediation commitments reviewed.');
+  remember('Board report', 'Monthly board pack', 'Submitted board KPIs', 'Board reviewed risk heat map, SAR statistics, findings, budget, CPD, and remediation commitments.', 'medium');
+  addLog('Monthly board reporting complete: KPIs, risk heat map, SAR statistics, findings, budget, CPD, and remediation commitments reviewed.');
   nextDay();
 }
 
@@ -874,8 +1157,55 @@ function trainTeam(courseIndex) {
       stress: clamp(employee.stress - 6, 0, 100)
     }));
     state.queues.trainingDue = Math.max(0, state.queues.trainingDue - 4);
+    state.cpdHours += 6;
+    unlockKnowledgeFromCourse(course.name);
     applyEffects({ budget: -course.cost, ...course.benefit, xp: course.xp });
     addLog(`Training delivered: ${course.name}. Staff skills and confidence improved.`);
+  }
+  render();
+}
+
+function unlockKnowledgeFromCourse(courseName) {
+  const lower = courseName.toLowerCase();
+  if (lower.includes('sanctions') || lower.includes('cgss')) state.knowledge.sanctions = clamp(state.knowledge.sanctions + 1, 0, 5);
+  if (lower.includes('blockchain')) state.knowledge.crypto = clamp(state.knowledge.crypto + 1, 0, 5);
+  if (lower.includes('fraud')) state.knowledge.fraud = clamp(state.knowledge.fraud + 1, 0, 5);
+  if (lower.includes('cams') || lower.includes('ica')) {
+    state.knowledge.aml = clamp(state.knowledge.aml + 1, 0, 5);
+    state.knowledge.compliance = clamp(state.knowledge.compliance + 1, 0, 5);
+    if (!state.certifications.includes('CAMS / ICA pathway')) state.certifications.push('CAMS / ICA pathway');
+  }
+  if (lower.includes('aml')) state.knowledge.aml = clamp(state.knowledge.aml + 1, 0, 5);
+}
+
+function attendConference(branchKey) {
+  const branch = knowledgeBranches[branchKey];
+  if (!branch) return;
+  const cost = 7;
+  if (state.stats.budget < cost) {
+    addLog(`Conference request rejected: insufficient budget for ${branch.name}.`);
+    applyEffects({ boardConfidence: -1 });
+  } else {
+    state.cpdHours += 10;
+    state.knowledge[branchKey] = clamp(state.knowledge[branchKey] + 1, 0, 5);
+    applyEffects({ budget: -cost, reputation: 2, regulatoryScore: 2, xp: 35 });
+    remember('CPD', `${branch.name} conference`, 'Attended conference', `Unlocked intelligence: ${branch.unlocks[state.knowledge[branchKey] % branch.unlocks.length]}.`, 'low');
+    addLog(`Attended ${branch.name} conference. CPD increased and new capability intelligence unlocked.`);
+  }
+  render();
+}
+
+function expandJurisdiction(jurisdictionId) {
+  const jurisdiction = jurisdictions[jurisdictionId];
+  if (!jurisdiction || state.unlockedJurisdictions.includes(jurisdictionId)) return;
+  if (state.stats.budget < jurisdiction.unlockCost) {
+    addLog(`Expansion blocked: ${jurisdiction.name} requires ${jurisdiction.unlockCost} budget for local compliance setup.`);
+    applyEffects({ boardConfidence: -2 });
+  } else {
+    state.unlockedJurisdictions.push(jurisdictionId);
+    applyEffects({ budget: -jurisdiction.unlockCost, revenue: 8, riskExposure: jurisdiction.complexity / 3, regulatoryScore: -2, xp: 50 });
+    remember('Expansion', jurisdiction.name, 'Entered jurisdiction', `${jurisdiction.reporting}, ${jurisdiction.sanctions}, and local control obligations now affect inspections.`, 'medium');
+    addLog(`Expanded into ${jurisdiction.name}. Reporting: ${jurisdiction.reporting}. Sanctions: ${jurisdiction.sanctions}.`);
   }
   render();
 }
@@ -983,6 +1313,12 @@ function renderDailyReview() {
         action: () => { state.scene = 'customerReview'; render(); }
       },
       {
+        title: 'Board politics / global strategy',
+        detail: 'Manage board personalities, CPD, knowledge branches, conferences, and jurisdiction expansion.',
+        meta: `${state.unlockedJurisdictions.length} jurisdictions · CPD ${state.cpdHours}h`,
+        action: () => { state.scene = 'strategy'; render(); }
+      },
+      {
         title: state.day % 5 === 0 ? 'Complete monthly board report' : 'End day',
         detail: state.day % 5 === 0 ? 'Report KPIs, heat map, SARs, findings, budget, and remediation.' : 'Move to tomorrow and let the ecosystem adapt.',
         meta: 'Advance time',
@@ -1002,13 +1338,30 @@ function getEcosystemNarrative() {
 
 function renderCasework() {
   const caseItem = getCurrentCase();
+  if (state.currentInvestigation.caseIndex !== state.currentCaseIndex) resetInvestigation(state.currentCaseIndex);
+  const actionChoices = investigationActions.map(action => {
+    const completed = state.currentInvestigation.actions.includes(action.id);
+    return {
+      title: completed ? `${action.title} ✓` : action.title,
+      detail: `${action.detail} Costs: ${action.cost.time} time, ${action.cost.budget} budget, ${action.cost.capacity} capacity.`,
+      meta: completed ? 'Evidence already collected' : `Adds: ${action.evidence}`,
+      action: () => performInvestigationAction(action.id)
+    };
+  });
+  const decisionChoices = caseItem.choices.map(choice => ({
+    ...choice,
+    meta: `${summarizeEffects(choice.effects)} · Evidence collected ${state.currentInvestigation.evidence.length}`
+  }));
   return {
     chapter: `Case ${state.currentCaseIndex + 1} · ${caseItem.type}`,
     title: caseItem.title,
-    body: caseItem.body,
+    body: [
+      ...caseItem.body,
+      `Investigation resources spent: ${state.currentInvestigation.timeSpent} time, ${state.currentInvestigation.spend} budget. Evidence collected changes how defensible the final decision feels, but every action adds pressure somewhere else.`
+    ],
     lessons: caseItem.lessons,
-    evidence: caseItem.evidence,
-    choices: caseItem.choices.map(choice => ({ ...choice, meta: summarizeEffects(choice.effects) }))
+    evidence: [...caseItem.evidence, ...state.currentInvestigation.evidence],
+    choices: [...actionChoices, ...decisionChoices]
   };
 }
 
@@ -1109,6 +1462,38 @@ function renderCustomerReview() {
   };
 }
 
+function renderStrategy() {
+  return {
+    chapter: `Year ${state.year} · Board politics and global strategy`,
+    title: 'Manage politics, knowledge, CPD, and global complexity',
+    body: [
+      'Compliance Empire is not won by clicking the safest answer. Board members, executives, employees, regulators, customers, criminals, and media all pull in different directions.',
+      'Use this screen to build long-term capability. Conferences and certifications unlock actual mechanics, while global expansion increases revenue and complexity. Board relationships shape whether future controls are funded or resisted.'
+    ],
+    lessons: ['Board politics', 'Global regulatory environment', 'CPD maintenance', 'Knowledge tree capabilities'],
+    evidence: [
+      ...boardMembers.map(member => `${member.name} (${member.role}) wants ${member.wants}. Relationship ${state.boardRelationships[member.id]}.`),
+      ...state.unlockedJurisdictions.map(id => `${jurisdictions[id].name}: ${jurisdictions[id].reporting}, ${jurisdictions[id].sanctions}`),
+      ...Object.entries(knowledgeBranches).map(([key, branch]) => `${branch.name} level ${state.knowledge[key]}: ${branch.unlocks[Math.min(state.knowledge[key], branch.unlocks.length - 1)]}`)
+    ],
+    choices: [
+      ...Object.entries(knowledgeBranches).map(([key, branch]) => ({
+        title: `Attend ${branch.name} conference`,
+        detail: `Earn CPD, recruit contacts, and unlock intelligence such as ${branch.unlocks.join(', ')}.`,
+        meta: 'Cost 7 budget · +10 CPD',
+        action: () => attendConference(key)
+      })),
+      ...Object.entries(jurisdictions).filter(([id]) => !state.unlockedJurisdictions.includes(id)).slice(0, 4).map(([id, jurisdiction]) => ({
+        title: `Expand into ${jurisdiction.name}`,
+        detail: `Adds ${jurisdiction.reporting}, ${jurisdiction.sanctions}, and ${jurisdiction.complexity} complexity pressure.`,
+        meta: `Cost ${jurisdiction.unlockCost} · revenue growth`,
+        action: () => expandJurisdiction(id)
+      })),
+      { title: 'Return to command briefing', detail: 'Go back to daily decisions.', meta: 'No strategy action', action: () => { state.scene = 'dailyReview'; render(); } }
+    ]
+  };
+}
+
 function renderFinale() {
   const score = Math.round((state.stats.integrity + state.stats.reputation + state.stats.regulatoryScore + (100 - state.stats.riskExposure) + state.stats.boardConfidence) / 5);
   let outcome = 'Developing compliance leader';
@@ -1147,6 +1532,7 @@ function getSceneModel() {
   if (state.scene === 'people') return renderPeople();
   if (state.scene === 'technology') return renderTechnology();
   if (state.scene === 'customerReview') return renderCustomerReview();
+  if (state.scene === 'strategy') return renderStrategy();
   return renderFinale();
 }
 
@@ -1161,8 +1547,11 @@ function renderProfile() {
   const company = getCompany();
   const profile = {
     Institution: company?.name || 'Not selected',
+    Year: state.year,
     Day: state.day,
     Month: state.month,
+    Jurisdictions: state.unlockedJurisdictions.length,
+    CPD: `${state.cpdHours} hours`,
     Role: getLevel().title,
     XP: `${state.xp} / ${careerLevels[Math.min(state.levelIndex + 1, careerLevels.length - 1)].xp}`,
     Challenge: company?.challenge || 'Choose a company type to begin'
@@ -1181,6 +1570,16 @@ function renderProfile() {
   });
 }
 
+function calculateWhistleblowerRisk() {
+  const stress = state.team.reduce((sum, employee) => sum + employee.stress, 0) / Math.max(1, state.team.length);
+  return clamp(Math.round(stress + Math.max(0, state.queues.alerts - 20) - state.stats.employeeMorale / 4));
+}
+
+function calculateOperationalEfficiency() {
+  const productivity = state.team.reduce((sum, employee) => sum + employee.productivity, 0);
+  return clamp(Math.round(productivity + state.controls.length * 8 - state.queues.alerts - state.queues.investigations));
+}
+
 function renderStats() {
   const statCards = [
     ['Integrity', state.stats.integrity, 'Independence under pressure'],
@@ -1193,7 +1592,9 @@ function renderStats() {
     ['Budget', state.stats.budget, 'Available spend for people and controls'],
     ['Board confidence', state.stats.boardConfidence, 'Senior management support'],
     ['SARs', state.stats.sars, 'Suspicious reports submitted'],
-    ['Findings', state.stats.findings, 'Regulatory/audit findings']
+    ['Findings', state.stats.findings, 'Regulatory/audit findings'],
+    ['Whistleblower risk', calculateWhistleblowerRisk(), 'Culture, stress, and ignored concerns'],
+    ['Operational efficiency', calculateOperationalEfficiency(), 'Controls, people, queues, and technology']
   ];
 
   elements.statsGrid.innerHTML = statCards.map(([label, value, help]) => {
@@ -1212,7 +1613,9 @@ function renderRiskMap() {
     Crypto: state.stats.riskExposure - (hasControl('blockchain') ? 18 : 0) + (company?.riskBias.crypto || 0),
     'Market abuse': state.stats.riskExposure - 10 + (company?.riskBias.marketAbuse || 0),
     'Customer harm': state.stats.riskExposure - 8 + (company?.riskBias.consumerAml || 0),
-    'Control backlog': Math.min(100, state.queues.alerts * 3 + state.queues.investigations * 4)
+    'Control backlog': Math.min(100, state.queues.alerts * 3 + state.queues.investigations * 4),
+    'Criminal adaptation': Math.max(...Object.values(state.criminalAdaptation)),
+    'Jurisdiction complexity': Math.min(100, state.unlockedJurisdictions.reduce((sum, id) => sum + (jurisdictions[id]?.complexity || 0), 0))
   };
 
   elements.riskMap.innerHTML = Object.entries(baseRisks).map(([label, value]) => {
@@ -1300,6 +1703,34 @@ function renderQueues() {
   `).join('');
 }
 
+function renderBoard() {
+  if (!elements.boardList) return;
+  elements.boardList.innerHTML = boardMembers.map(member => `
+    <div class="board-card">
+      <strong>${member.name}</strong>
+      <span>${member.role} · ${member.personality}</span>
+      <small>Wants: ${member.wants}</small>
+      <div class="meter"><span style="width:${state.boardRelationships[member.id]}%"></span></div>
+      <small>Relationship ${state.boardRelationships[member.id]}</small>
+    </div>
+  `).join('');
+}
+
+function renderMemory() {
+  if (!elements.memoryList) return;
+  const memories = state.longTermMemory.slice(0, 8);
+  elements.memoryList.innerHTML = memories.length
+    ? memories.map(memory => `<li><strong>${memory.year}</strong> · ${memory.type}: ${memory.subject} — ${memory.decision}. <span>${memory.consequence}</span></li>`).join('')
+    : '<li>No long-term memory records yet.</li>';
+}
+
+function renderMedia() {
+  if (!elements.mediaList) return;
+  elements.mediaList.innerHTML = state.media.length
+    ? state.media.map(item => `<li class="${item.tone}">${item.year}: ${item.headline}</li>`).join('')
+    : '<li>No media coverage yet.</li>';
+}
+
 function renderLog() {
   const achievementNames = state.achievements.map(id => id.replace(/([A-Z])/g, ' $1').replace(/^./, letter => letter.toUpperCase()));
   const entries = [
@@ -1324,6 +1755,9 @@ function render() {
   renderTeam();
   renderSystems();
   renderQueues();
+  renderBoard();
+  renderMemory();
+  renderMedia();
   renderLog();
 }
 

@@ -407,3 +407,43 @@ h3 {
   .risk-map,
   .queue-list { grid-template-columns: 1fr; }
 }
+
+.board-list,
+.media-list,
+.memory-list {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+}
+
+.board-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.8rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid var(--border);
+}
+
+.board-card span,
+.board-card small,
+.memory-list span {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.media-list li,
+.memory-list li {
+  margin-bottom: 0.45rem;
+  line-height: 1.45;
+}
+
+.media-list li.positive { color: var(--accent-2); }
+.media-list li.negative { color: var(--danger); }
+.media-list li.neutral { color: var(--muted); }
+
+.bottom-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
