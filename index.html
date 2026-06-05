@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Compliance Empire</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="game-shell">
+    <section class="hero-card" aria-labelledby="game-title">
+      <p class="eyebrow">Deep strategy-management game</p>
+      <h1 id="game-title">Compliance Empire</h1>
+      <p class="intro">
+        Survive and grow a financial institution while criminals adapt, regulators inspect,
+        employees burn out, board members fight, media reacts, and decisions from years ago return
+        as scandals, precedents, inspections, or career-defining victories.
+      </p>
+      <div class="hero-actions">
+        <button id="start-button" type="button">Start new career</button>
+        <button id="restart-button" type="button" class="secondary">Restart</button>
+      </div>
+    </section>
+
+    <section class="dashboard" aria-label="Command dashboard">
+      <article class="panel profile-panel">
+        <h2>Career & institution</h2>
+        <dl id="profile-grid" class="profile-grid"></dl>
+        <h3>Progression ladder</h3>
+        <ol id="hierarchy-list" class="hierarchy-list"></ol>
+      </article>
+
+      <article class="panel score-panel">
+        <h2>KPI dashboard</h2>
+        <div id="stats-grid" class="stats-grid"></div>
+      </article>
+
+      <article class="panel risk-panel">
+        <h2>Risk heat map</h2>
+        <div id="risk-map" class="risk-map"></div>
+      </article>
+    </section>
+
+    <section class="operations-grid" aria-label="Operations panels">
+      <article class="panel story-panel" aria-live="polite">
+        <div class="chapter-label" id="chapter-label">Awaiting start</div>
+        <h2 id="scene-title">Welcome to the command centre</h2>
+        <div id="scene-body" class="scene-body">
+          <p>
+            Press start to choose an institution type, sit your role interview, and begin the daily
+            compliance cycle: alerts, customer review, investigations, staff management,
+            regulatory requests, controls, board reporting, and KPI review.
+          </p>
+        </div>
+        <div id="lesson-box" class="lesson-box" hidden>
+          <h3>Training concepts</h3>
+          <ul id="lesson-list"></ul>
+        </div>
+        <div id="evidence-box" class="evidence-box" hidden>
+          <h3>Investigation board</h3>
+          <div id="evidence-list" class="evidence-list"></div>
+        </div>
+        <div id="choices" class="choices"></div>
+      </article>
+
+      <aside class="side-stack">
+        <article class="panel team-panel">
+          <h2>Team roster</h2>
+          <div id="team-list" class="team-list"></div>
+        </article>
+
+        <article class="panel systems-panel">
+          <h2>Controls & technology</h2>
+          <div id="systems-list" class="systems-list"></div>
+        </article>
+      </aside>
+    </section>
+
+    <section class="bottom-grid">
+      <article class="panel queue-panel">
+        <h2>Queues & cases</h2>
+        <div id="queue-list" class="queue-list"></div>
+      </article>
+
+      <article class="panel board-panel">
+        <h2>Board politics</h2>
+        <div id="board-list" class="board-list"></div>
+      </article>
+
+      <article class="panel media-panel">
+        <h2>Media & public pressure</h2>
+        <ol id="media-list" class="media-list"></ol>
+      </article>
+
+      <article class="panel memory-panel">
+        <h2>Long-term memory</h2>
+        <ol id="memory-list" class="memory-list"></ol>
+      </article>
+
+      <article class="panel log-panel">
+        <h2>Career log & achievements</h2>
+        <ol id="career-log" class="career-log"></ol>
+      </article>
+    </section>
+  </main>
+
+  <template id="choice-template">
+    <button type="button" class="choice-card">
+      <span class="choice-title"></span>
+      <span class="choice-detail"></span>
+      <span class="choice-meta"></span>
+    </button>
+  </template>
+
+  <script src="game.js"></script>
+</body>
+</html>
