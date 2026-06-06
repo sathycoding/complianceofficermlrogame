@@ -1,527 +1,560 @@
-const roleHierarchy = [
-  'Candidate: Compliance Analyst interview',
-  'Compliance Analyst: onboarding, KYC, policy learning',
-  'Compliance Officer: monitoring, advice, training, escalation',
-  'Deputy MLRO: investigations, SAR/STR drafting, quality assurance',
-  'MLRO / Head of Financial Crime: final reporting, regulator liaison, board accountability',
-  'Chief Compliance Officer: enterprise governance and remediation'
+const SAVE_KEY = 'aml-simulator-state-v1';
+const TICK_MS = 1000;
+const HOURS_PER_TICK = 2;
+const WIN_DAY = 30;
+const LOSS_FRAUD_THRESHOLD = 100;
+
+const typologies = [
+  {
+    id: 'structuring',
+    name: 'Structuring (Smurfing)',
+    description: 'Cash or transfer values are broken into small transactions to avoid reporting thresholds.',
+    basePressure: 1.4,
+    growth: 0.05,
+    impact: 1.1,
+    detection: 30,
+    counteredBy: ['monitoring', 'kyc', 'fiu']
+  },
+  {
+    id: 'tbml',
+    name: 'Trade-Based Money Laundering',
+    description: 'Criminal proceeds move through over-invoicing, under-invoicing, phantom shipments, or mismatched goods.',
+    basePressure: 1.0,
+    growth: 0.065,
+    impact: 1.45,
+    detection: 24,
+    counteredBy: ['tradeAnalytics', 'fiu', 'rd']
+  },
+  {
+    id: 'realEstate',
+    name: 'Real Estate Laundering',
+    description: 'Illicit funds are integrated through property purchases, shell companies, nominees, and rapid resales.',
+    basePressure: 0.85,
+    growth: 0.075,
+    impact: 1.6,
+    detection: 18,
+    counteredBy: ['beneficialOwnership', 'kyc', 'fiu']
+  },
+  {
+    id: 'cyber',
+    name: 'Cyber Laundering',
+    description: 'Crypto rails, mule accounts, online games, and digital platforms obscure source and movement of funds.',
+    basePressure: 1.2,
+    growth: 0.08,
+    impact: 1.35,
+    detection: 22,
+    counteredBy: ['cyberUnit', 'monitoring', 'rd']
+  }
+];
+
+const countermeasures = [
+  {
+    id: 'monitoring',
+    title: 'Digital transaction monitoring',
+    type: 'Preventive measure',
+    detail: 'Rules, scenarios, and anomaly models tuned to velocity, thresholds, and linked accounts.',
+    cost: 6500,
+    deploymentHours: 8,
+    effectiveness: 16,
+    targets: ['structuring', 'cyber'],
+    revenueDrag: 0.02
+  },
+  {
+    id: 'kyc',
+    title: 'Stricter KYC / EDD program',
+    type: 'Preventive measure',
+    detail: 'Risk-tiered onboarding, source-of-funds checks, adverse media, and periodic reviews.',
+    cost: 5200,
+    deploymentHours: 6,
+    effectiveness: 14,
+    targets: ['structuring', 'realEstate'],
+    revenueDrag: 0.035
+  },
+  {
+    id: 'fiu',
+    title: 'Financial intelligence task force',
+    type: 'Task force',
+    detail: 'Investigators triage alerts, connect networks, file reports, and seize suspect funds.',
+    cost: 7800,
+    deploymentHours: 10,
+    effectiveness: 18,
+    targets: ['structuring', 'tbml', 'realEstate'],
+    seizureBoost: 0.2
+  },
+  {
+    id: 'tradeAnalytics',
+    title: 'Trade anomaly analytics',
+    type: 'Preventive measure',
+    detail: 'Compares invoices, routes, goods, and pricing against trade and customs intelligence.',
+    cost: 7200,
+    deploymentHours: 9,
+    effectiveness: 20,
+    targets: ['tbml'],
+    revenueDrag: 0.015
+  },
+  {
+    id: 'beneficialOwnership',
+    title: 'Beneficial ownership registry checks',
+    type: 'Preventive measure',
+    detail: 'Maps shell companies, nominees, PEP links, and property holding structures.',
+    cost: 6100,
+    deploymentHours: 7,
+    effectiveness: 17,
+    targets: ['realEstate'],
+    revenueDrag: 0.015
+  },
+  {
+    id: 'cyberUnit',
+    title: 'Cybercrime disruption unit',
+    type: 'Task force',
+    detail: 'Specialists trace wallets, mule networks, compromised accounts, and platform abuse.',
+    cost: 8300,
+    deploymentHours: 8,
+    effectiveness: 21,
+    targets: ['cyber'],
+    seizureBoost: 0.25
+  },
+  {
+    id: 'rd',
+    title: 'Research & development lab',
+    type: 'R&D',
+    detail: 'Unlocks typology intelligence and improves every deployed control over time.',
+    cost: 9500,
+    deploymentHours: 12,
+    effectiveness: 8,
+    targets: ['tbml', 'cyber'],
+    globalBoost: 0.08
+  },
+  {
+    id: 'awareness',
+    title: 'Public awareness campaign',
+    type: 'Preventive measure',
+    detail: 'Educates customers and staff about mule recruitment, scams, and reporting red flags.',
+    cost: 3600,
+    deploymentHours: 4,
+    effectiveness: 9,
+    targets: ['structuring', 'cyber'],
+    revenueDrag: 0.005
+  },
+  {
+    id: 'reinvest',
+    title: 'Reinvest seized funds',
+    type: 'Capital allocation',
+    detail: 'Return recovered money into legitimate programs and increase productive revenue.',
+    cost: 0,
+    deploymentHours: 2,
+    effectiveness: 0,
+    targets: [],
+    requiresSeizedFunds: true
+  }
+];
+
+const metricDefinitions = [
+  ['legitimateRevenue', 'Legitimate revenue', 'Productive economic output and source of operating budget.'],
+  ['budget', 'Budget', 'Available funds for controls, investigations, and R&D.'],
+  ['fraudMl', 'Fraud/ML', 'Current illicit activity pressure. Target: zero.'],
+  ['illicitFunds', 'Illicit funds', 'Total laundered value that strengthens adversary capability.'],
+  ['seizedFunds', 'Seized funds', 'Recovered illicit value available for reinvestment.'],
+  ['trust', 'Public trust', 'Confidence in the financial system and your institution.']
 ];
 
 const initialState = {
-  scene: 'interview',
-  roleIndex: 0,
-  stats: {
-    integrity: 50,
-    riskControl: 50,
-    regulatorTrust: 50,
-    morale: 50,
-    budget: 50
-  },
-  log: []
-};
-
-const scenes = {
-  interview: {
-    chapter: 'Stage 1 · Interview before appointment',
-    title: 'Panel interview: Can you become a compliance officer?',
-    body: [
-      'FinShield is a payments fintech applying for a bank partnership. The CEO, MLRO, Head of Product, and an external adviser interview you for a compliance role. They ask practical questions, not textbook trivia.',
-      '<strong>Question:</strong> A high-growth sales team says enhanced due diligence slows onboarding. What do you say in the interview?'
-    ],
-    duties: [
-      'Explain the three lines of defence and where compliance sits.',
-      'Show independent judgment while supporting commercial objectives.',
-      'Demonstrate knowledge of KYC, customer risk assessment, sanctions, transaction monitoring, SAR/STR escalation, and regulatory reporting.'
-    ],
-    choices: [
-      {
-        title: 'Give a balanced risk answer',
-        detail: 'Offer risk-tiered onboarding, fast-track low-risk customers, and mandatory EDD for high-risk triggers.',
-        next: 'firstDay',
-        roleIndex: 1,
-        effects: { integrity: 12, riskControl: 10, regulatorTrust: 8, morale: 4, budget: -2 },
-        log: 'You passed the interview by showing independence and proportionality.'
-      },
-      {
-        title: 'Promise to approve everything faster',
-        detail: 'Tell the CEO compliance can be a rubber stamp if targets require it.',
-        next: 'firstDay',
-        roleIndex: 1,
-        effects: { integrity: -15, riskControl: -14, regulatorTrust: -10, morale: 6, budget: 4 },
-        log: 'You got hired, but the MLRO noted a worrying willingness to compromise controls.'
-      },
-      {
-        title: 'Reject all high-risk business',
-        detail: 'Say the safest option is to refuse every complex customer, including legitimate ones.',
-        next: 'firstDay',
-        roleIndex: 1,
-        effects: { integrity: 5, riskControl: 3, regulatorTrust: 2, morale: -9, budget: -10 },
-        log: 'You sounded ethical but too rigid for a risk-based compliance function.'
-      }
-    ]
-  },
-
-  firstDay: {
-    chapter: 'Stage 2 · First 30 days',
-    title: 'Your induction: policies, governance, and the control map',
-    body: [
-      'You join as Compliance Analyst. Your inbox contains policy attestations, a customer risk assessment backlog, sanctions screening alerts, and an invitation to the monthly Risk & Compliance Committee.',
-      'Your manager asks you to build a 30-day plan. This determines whether you understand the full compliance life-cycle or just isolated tasks.'
-    ],
-    duties: [
-      'Read AML/CTF, sanctions, anti-bribery, complaints, data protection, market conduct, outsourcing, and whistleblowing policies.',
-      'Map legal obligations to controls, owners, evidence, management information, and escalation routes.',
-      'Understand governance: board risk appetite, MLRO reporting line, committees, audit, and regulator communication protocols.'
-    ],
-    choices: [
-      {
-        title: 'Create a control-and-obligation map',
-        detail: 'Prioritize legal obligations, control owners, evidence, and gaps; then brief your manager.',
-        next: 'kycBacklog',
-        roleIndex: 1,
-        effects: { integrity: 5, riskControl: 12, regulatorTrust: 8, morale: 2, budget: -3 },
-        log: 'Your control map reveals missing evidence for sanctions alert reviews and overdue training attestations.'
-      },
-      {
-        title: 'Only clear the easiest alerts',
-        detail: 'Focus on quick wins and leave complex onboarding files untouched.',
-        next: 'kycBacklog',
-        roleIndex: 1,
-        effects: { integrity: -4, riskControl: -7, regulatorTrust: -5, morale: 4, budget: 2 },
-        log: 'You reduced superficial volumes, but high-risk files continued aging.'
-      },
-      {
-        title: 'Escalate every uncertainty to the MLRO',
-        detail: 'Avoid making any judgment call until the MLRO personally reviews each item.',
-        next: 'kycBacklog',
-        roleIndex: 1,
-        effects: { integrity: 2, riskControl: 1, regulatorTrust: 1, morale: -6, budget: -4 },
-        log: 'The MLRO appreciates caution but warns you to develop proportionate decision-making.'
-      }
-    ]
-  },
-
-  kycBacklog: {
-    chapter: 'Stage 3 · Customer due diligence',
-    title: 'The politically exposed founder and the urgent launch',
-    body: [
-      'A crypto-remittance start-up wants an account before a public launch. One beneficial owner is a foreign politically exposed person (PEP). Source of wealth is plausible but not evidenced; adverse media mentions procurement controversies. Sales says losing the deal will damage revenue.',
-      'The Head of Product asks you to “just approve pending documents” because monitoring can catch problems later.'
-    ],
-    duties: [
-      'Perform customer due diligence and enhanced due diligence for PEPs, high-risk industries, and complex ownership.',
-      'Verify beneficial ownership, purpose of account, source of funds/source of wealth, expected activity, sanctions and adverse media results.',
-      'Document rationale, conditions, approvals, and periodic review frequency.'
-    ],
-    choices: [
-      {
-        title: 'Apply EDD and conditional escalation',
-        detail: 'Request source-of-wealth evidence, senior management approval, risk committee note, and launch limits.',
-        next: 'monitoringSpike',
-        roleIndex: 2,
-        effects: { integrity: 10, riskControl: 13, regulatorTrust: 10, morale: -2, budget: -5 },
-        log: 'You are promoted to Compliance Officer after a strong EDD memo withstands challenge.'
-      },
-      {
-        title: 'Approve now, monitor later',
-        detail: 'Let the customer launch while waiting for documents.',
-        next: 'monitoringSpike',
-        roleIndex: 2,
-        effects: { integrity: -14, riskControl: -16, regulatorTrust: -12, morale: 8, budget: 8 },
-        log: 'Revenue celebrates, but your file contains weak evidence and no senior approval.'
-      },
-      {
-        title: 'Reject without explaining why',
-        detail: 'Decline the customer immediately and send a vague note to sales.',
-        next: 'monitoringSpike',
-        roleIndex: 2,
-        effects: { integrity: 4, riskControl: 6, regulatorTrust: 3, morale: -10, budget: -12 },
-        log: 'The risk is avoided, but poor rationale creates friction and no learning for the business.'
-      }
-    ]
-  },
-
-  monitoringSpike: {
-    chapter: 'Stage 4 · Transaction monitoring and investigations',
-    title: 'Midnight alert: mule network or messy growth?',
-    body: [
-      'Transaction monitoring flags a cluster of newly onboarded accounts receiving many small inbound payments followed by rapid outbound transfers to different wallets. IP addresses overlap, device fingerprints repeat, and customer profiles list unrelated occupations.',
-      'Operations wants to close the alerts as “expected fintech usage” because the queue is already behind service-level targets.'
-    ],
-    duties: [
-      'Triage alerts using customer profile, typology, transaction pattern, sanctions exposure, and previous case history.',
-      'Document investigation steps, request information where appropriate, recommend restrictions, and escalate suspicious activity.',
-      'Tune monitoring rules with data teams without weakening typology coverage merely to reduce volumes.'
-    ],
-    choices: [
-      {
-        title: 'Open a linked-case investigation',
-        detail: 'Join alerts, preserve evidence, ask Ops to pause exits, and draft an MLRO escalation with typology analysis.',
-        next: 'sarDecision',
-        roleIndex: 3,
-        effects: { integrity: 12, riskControl: 15, regulatorTrust: 10, morale: -4, budget: -4 },
-        log: 'Your linked-case method exposes a probable mule network and earns Deputy MLRO responsibility.'
-      },
-      {
-        title: 'Bulk close below threshold',
-        detail: 'Close cases under a value threshold without reviewing linked behaviour.',
-        next: 'sarDecision',
-        roleIndex: 3,
-        effects: { integrity: -16, riskControl: -18, regulatorTrust: -15, morale: 7, budget: 5 },
-        log: 'The queue improves, but suspicious linked behaviour remains unreported.'
-      },
-      {
-        title: 'Freeze every account instantly',
-        detail: 'Block all accounts in the segment before checking proportionality or customer impact.',
-        next: 'sarDecision',
-        roleIndex: 3,
-        effects: { integrity: 2, riskControl: 5, regulatorTrust: 1, morale: -12, budget: -8 },
-        log: 'You stopped some risk but created complaints and potential unfair treatment issues.'
-      }
-    ]
-  },
-
-  sarDecision: {
-    chapter: 'Stage 5 · MLRO suspicion and reporting',
-    title: 'The SAR/STR decision: suspicion, consent, and confidentiality',
-    body: [
-      'As Deputy MLRO, you prepare a suspicious activity report package. The evidence shows linked accounts, rapid movement of funds, false occupation data, and common devices. The CEO asks whether you can warn the customer group to provide better explanations before filing.',
-      'You must protect confidentiality, avoid tipping off, decide whether suspicion exists, and consider freezing, exiting, or seeking law-enforcement consent depending on jurisdiction.'
-    ],
-    duties: [
-      'Assess whether knowledge or suspicion is met and record the reasoning independently.',
-      'Draft SAR/STR narratives with who, what, when, where, why suspicious, values, counterparties, and supporting evidence.',
-      'Prevent tipping off, manage internal disclosure, maintain SAR registers, and oversee post-report customer handling.'
-    ],
-    choices: [
-      {
-        title: 'File a high-quality SAR/STR',
-        detail: 'Submit promptly, restrict need-to-know access, brief the CEO on tipping-off risk, and maintain a case register.',
-        next: 'trainingCulture',
-        roleIndex: 4,
-        effects: { integrity: 15, riskControl: 14, regulatorTrust: 14, morale: -3, budget: -3 },
-        log: 'You become MLRO after making an independent, well-documented suspicion decision.'
-      },
-      {
-        title: 'Ask customers for their side first',
-        detail: 'Contact linked customers with details of the monitoring concern before deciding.',
-        next: 'trainingCulture',
-        roleIndex: 4,
-        effects: { integrity: -18, riskControl: -16, regulatorTrust: -18, morale: 4, budget: 2 },
-        log: 'Potential tipping off compromises the investigation and alarms the MLRO.'
-      },
-      {
-        title: 'File a vague defensive report',
-        detail: 'Submit a SAR/STR with minimal facts just to prove something was filed.',
-        next: 'trainingCulture',
-        roleIndex: 4,
-        effects: { integrity: -3, riskControl: -7, regulatorTrust: -9, morale: -2, budget: -1 },
-        log: 'The report is timely but too vague to help authorities or demonstrate robust governance.'
-      }
-    ]
-  },
-
-  trainingCulture: {
-    chapter: 'Stage 6 · Culture, training, and advisory work',
-    title: 'The product sprint: embedded finance under pressure',
-    body: [
-      'Product is launching instant business payouts, Marketing wants a “no paperwork” campaign, and Customer Support keeps mishandling complaints with possible vulnerability indicators. Staff training completion is 61%.',
-      'As MLRO, you must influence culture without becoming the department of “no.”'
-    ],
-    duties: [
-      'Deliver role-based AML, sanctions, fraud, conduct, complaints, and data-handling training.',
-      'Advise product teams on risk assessments, customer disclosures, financial promotions, outsourcing, and control-by-design.',
-      'Use management information to escalate themes: overdue training, complaints root causes, policy breaches, and control gaps.'
-    ],
-    choices: [
-      {
-        title: 'Run a risk-by-design sprint',
-        detail: 'Embed compliance checkpoints, scenario-based training, approval gates, and MI dashboards for leadership.',
-        next: 'regulatorVisit',
-        roleIndex: 4,
-        effects: { integrity: 8, riskControl: 12, regulatorTrust: 8, morale: 8, budget: -7 },
-        log: 'The launch is slower but safer, and staff begin treating compliance as a design partner.'
-      },
-      {
-        title: 'Send a generic policy reminder',
-        detail: 'Email everyone the AML policy and hope managers enforce it.',
-        next: 'regulatorVisit',
-        roleIndex: 4,
-        effects: { integrity: -2, riskControl: -8, regulatorTrust: -5, morale: -3, budget: 3 },
-        log: 'Training remains a tick-box exercise, and product risk decisions stay undocumented.'
-      },
-      {
-        title: 'Block the launch indefinitely',
-        detail: 'Refuse all product changes until every theoretical risk is eliminated.',
-        next: 'regulatorVisit',
-        roleIndex: 4,
-        effects: { integrity: 3, riskControl: 4, regulatorTrust: 1, morale: -15, budget: -14 },
-        log: 'Risk is reduced, but the business loses trust and starts avoiding compliance early engagement.'
-      }
-    ]
-  },
-
-  regulatorVisit: {
-    chapter: 'Stage 7 · Regulator inspection',
-    title: 'The regulator arrives: evidence, candour, and remediation',
-    body: [
-      'The financial regulator sends an information request covering AML governance, customer risk assessments, SAR/STR logs, sanctions testing, complaints MI, outsourcing oversight, board minutes, and independent audit findings. A supervisory meeting is scheduled in ten business days.',
-      'Your board chair asks whether any weaknesses should be softened so the institution looks more mature.'
-    ],
-    duties: [
-      'Coordinate regulatory responses, maintain privilege and accuracy, and ensure accountable executives approve submissions.',
-      'Demonstrate governance: risk appetite, policies, controls, assurance, audit, board reporting, breaches, and remediation plans.',
-      'Engage with candour, preserve evidence, track commitments, and avoid misleading the regulator.'
-    ],
-    choices: [
-      {
-        title: 'Be candid and evidence-led',
-        detail: 'Submit accurate packs, disclose known gaps, present owners, deadlines, risk acceptance, and board oversight.',
-        next: 'boardCrisis',
-        roleIndex: 5,
-        effects: { integrity: 14, riskControl: 12, regulatorTrust: 18, morale: 3, budget: -8 },
-        log: 'The regulator criticizes gaps but praises candour, evidence, and accountable remediation.'
-      },
-      {
-        title: 'Hide weak files',
-        detail: 'Exclude messy customer files and describe incomplete controls as fully embedded.',
-        next: 'boardCrisis',
-        roleIndex: 5,
-        effects: { integrity: -25, riskControl: -12, regulatorTrust: -25, morale: -6, budget: 5 },
-        log: 'The regulator spots inconsistencies between MI and files; trust collapses.'
-      },
-      {
-        title: 'Overwhelm them with volume',
-        detail: 'Send every policy, spreadsheet, and committee pack without clear mapping or explanations.',
-        next: 'boardCrisis',
-        roleIndex: 5,
-        effects: { integrity: 1, riskControl: -2, regulatorTrust: -7, morale: -7, budget: -4 },
-        log: 'The submission is not misleading, but poor structure suggests weak governance grip.'
-      }
-    ]
-  },
-
-  boardCrisis: {
-    chapter: 'Stage 8 · Board accountability and crisis response',
-    title: 'A correspondent bank threatens termination',
-    body: [
-      'A correspondent bank threatens to end the relationship after media reports allege FinShield processed scam proceeds. The board wants a 48-hour plan. Customers need service continuity, law enforcement may request data, and the regulator expects updates.',
-      'As Chief Compliance Officer and MLRO, you must protect the institution, customers, and the financial system.'
-    ],
-    duties: [
-      'Lead incident governance with Legal, Risk, Operations, Product, Communications, and senior management.',
-      'Assess notifications to regulator, law enforcement, correspondent bank, data-protection authority, and affected customers.',
-      'Drive remediation: customer lookback, control testing, policy change, training, resourcing, disciplinary action, and board MI.'
-    ],
-    choices: [
-      {
-        title: 'Launch a disciplined crisis plan',
-        detail: 'Stand up a war room, preserve evidence, update regulator, perform lookback, and give the board daily MI.',
-        next: 'finale',
-        roleIndex: 5,
-        effects: { integrity: 16, riskControl: 15, regulatorTrust: 14, morale: 2, budget: -10 },
-        log: 'Your crisis governance keeps the bank partner engaged while remediation accelerates.'
-      },
-      {
-        title: 'Let PR handle it alone',
-        detail: 'Focus on reassuring statements and delay lookback until the news cycle moves on.',
-        next: 'finale',
-        roleIndex: 5,
-        effects: { integrity: -18, riskControl: -20, regulatorTrust: -18, morale: -4, budget: 4 },
-        log: 'Public statements outpace evidence; the regulator and correspondent bank demand urgent explanations.'
-      },
-      {
-        title: 'Shut down all customer activity',
-        detail: 'Freeze the whole platform immediately without segmentation or legal analysis.',
-        next: 'finale',
-        roleIndex: 5,
-        effects: { integrity: 2, riskControl: 6, regulatorTrust: -2, morale: -18, budget: -18 },
-        log: 'You reduce immediate exposure but create avoidable harm, complaints, and operational chaos.'
-      }
-    ]
-  },
-
-  finale: {
-    chapter: 'Career outcome',
-    title: 'Your compliance career review',
-    body: [],
-    duties: [
-      'Compliance is a life-cycle: appointment, onboarding, advisory, monitoring, investigation, reporting, governance, regulator engagement, remediation, and continuous improvement.',
-      'Strong officers balance independence, proportionality, evidence, candour, and commercial understanding.',
-      'The MLRO must be empowered, resourced, independent, and able to report directly to senior management and the board.'
-    ],
-    choices: []
-  }
+  running: false,
+  ended: false,
+  elapsedHours: 0,
+  legitimateRevenue: 50000,
+  budget: 18000,
+  fraudMl: 10,
+  illicitFunds: 0,
+  seizedFunds: 0,
+  trust: 72,
+  aiSophistication: 1,
+  deployments: [],
+  controls: {},
+  typologyPressure: Object.fromEntries(typologies.map(typology => [typology.id, typology.basePressure])),
+  log: ['Welcome, Crime Stopper. Start the simulation to begin real-time monitoring.']
 };
 
 let state = structuredClone(initialState);
+let loopId = null;
 
 const elements = {
   startButton: document.querySelector('#start-button'),
+  pauseButton: document.querySelector('#pause-button'),
+  saveButton: document.querySelector('#save-button'),
+  loadButton: document.querySelector('#load-button'),
   restartButton: document.querySelector('#restart-button'),
-  hierarchyList: document.querySelector('#hierarchy-list'),
-  statsGrid: document.querySelector('#stats-grid'),
-  chapterLabel: document.querySelector('#chapter-label'),
-  sceneTitle: document.querySelector('#scene-title'),
-  sceneBody: document.querySelector('#scene-body'),
-  dutiesBox: document.querySelector('#duties-box'),
-  dutiesList: document.querySelector('#duties-list'),
-  choices: document.querySelector('#choices'),
-  careerLog: document.querySelector('#career-log'),
-  choiceTemplate: document.querySelector('#choice-template')
+  clockLabel: document.querySelector('#clock-label'),
+  statusLabel: document.querySelector('#status-label'),
+  threatLabel: document.querySelector('#threat-label'),
+  budgetLabel: document.querySelector('#budget-label'),
+  metricsGrid: document.querySelector('#metrics-grid'),
+  typologyList: document.querySelector('#typology-list'),
+  countermeasureList: document.querySelector('#countermeasure-list'),
+  intelligenceBrief: document.querySelector('#intelligence-brief'),
+  operationsLog: document.querySelector('#operations-log'),
+  metricTemplate: document.querySelector('#metric-template'),
+  typologyTemplate: document.querySelector('#typology-template'),
+  countermeasureTemplate: document.querySelector('#countermeasure-template')
 };
 
-function clampScore(value) {
-  return Math.max(0, Math.min(100, value));
+function formatMoney(value) {
+  return `$${Math.round(value).toLocaleString()}`;
 }
 
-function applyChoice(choice) {
-  Object.entries(choice.effects).forEach(([stat, delta]) => {
-    state.stats[stat] = clampScore(state.stats[stat] + delta);
+function formatNumber(value) {
+  return Math.round(value).toLocaleString();
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getDay() {
+  return Math.floor(state.elapsedHours / 24) + 1;
+}
+
+function getHour() {
+  return 8 + (state.elapsedHours % 24);
+}
+
+function getActiveControlsFor(typologyId) {
+  const globalBoost = state.controls.rd ? state.controls.rd * 0.08 : 0;
+  return countermeasures.reduce((sum, countermeasure) => {
+    const level = state.controls[countermeasure.id] || 0;
+    if (!level || !countermeasure.targets.includes(typologyId)) return sum;
+    const levelMultiplier = 1 + (level - 1) * 0.35 + globalBoost;
+    return sum + countermeasure.effectiveness * levelMultiplier;
+  }, 0);
+}
+
+function addLog(message) {
+  const stamp = `Day ${getDay()} ${String(getHour()).padStart(2, '0')}:00`;
+  state.log.unshift(`${stamp} — ${message}`);
+  state.log = state.log.slice(0, 14);
+}
+
+function calculateThreat() {
+  return typologies.reduce((sum, typology) => sum + state.typologyPressure[typology.id], 0) * state.aiSophistication;
+}
+
+function calculateRevenueDrag() {
+  return countermeasures.reduce((drag, countermeasure) => {
+    const level = state.controls[countermeasure.id] || 0;
+    return drag + (countermeasure.revenueDrag || 0) * level;
+  }, 0);
+}
+
+function completeDeployments() {
+  state.deployments.forEach(deployment => {
+    deployment.remainingHours -= HOURS_PER_TICK;
   });
 
-  state.roleIndex = choice.roleIndex ?? state.roleIndex;
-  state.scene = choice.next;
-  state.log.unshift(choice.log);
+  const completed = state.deployments.filter(deployment => deployment.remainingHours <= 0);
+  state.deployments = state.deployments.filter(deployment => deployment.remainingHours > 0);
+
+  completed.forEach(deployment => {
+    const countermeasure = countermeasures.find(item => item.id === deployment.id);
+    if (!countermeasure) return;
+
+    if (countermeasure.id === 'reinvest') {
+      const amount = deployment.reinvested || 0;
+      state.legitimateRevenue += amount * 0.9;
+      state.budget += amount * 0.25;
+      addLog(`Reinvested ${formatMoney(amount)} in legitimate economic programs.`);
+      return;
+    }
+
+    state.controls[countermeasure.id] = (state.controls[countermeasure.id] || 0) + 1;
+    addLog(`${countermeasure.title} is operational at level ${state.controls[countermeasure.id]}.`);
+  });
+}
+
+function adaptAi() {
+  const leastProtected = typologies
+    .map(typology => ({ typology, protection: getActiveControlsFor(typology.id) }))
+    .sort((a, b) => a.protection - b.protection)[0];
+
+  if (!leastProtected) return;
+  state.typologyPressure[leastProtected.typology.id] += 0.15 * state.aiSophistication;
+
+  if (state.elapsedHours % 24 === 0) {
+    state.aiSophistication += 0.05 + state.illicitFunds / 10000000;
+    addLog(`Adversaries pivot toward ${leastProtected.typology.name}, the least protected channel.`);
+  }
+}
+
+function resolveTypology(typology) {
+  const pressure = state.typologyPressure[typology.id];
+  const controls = getActiveControlsFor(typology.id);
+  const detectionChance = clamp((typology.detection + controls - state.aiSophistication * 6) / 100, 0.05, 0.88);
+  const attackValue = pressure * typology.impact * state.aiSophistication * 220;
+
+  if (Math.random() < detectionChance) {
+    const seizureRate = 0.22 + controls / 500 + getSeizureBoost();
+    const seized = attackValue * clamp(seizureRate, 0.12, 0.72);
+    state.fraudMl = clamp(state.fraudMl - 0.45 - controls / 70, 0, LOSS_FRAUD_THRESHOLD);
+    state.seizedFunds += seized;
+    state.trust = clamp(state.trust + 0.08, 0, 100);
+
+    if (Math.random() < 0.18) {
+      addLog(`Detected ${typology.name}; seized ${formatMoney(seized)} and disrupted linked accounts.`);
+    }
+  } else {
+    state.fraudMl = clamp(state.fraudMl + pressure * typology.impact * 0.28, 0, 150);
+    state.illicitFunds += attackValue;
+    state.legitimateRevenue = Math.max(0, state.legitimateRevenue - attackValue * 0.09);
+    state.trust = clamp(state.trust - pressure * 0.04, 0, 100);
+
+    if (Math.random() < 0.16) {
+      addLog(`${typology.name} scheme succeeded, adding ${formatMoney(attackValue)} to illicit flows.`);
+    }
+  }
+}
+
+function getSeizureBoost() {
+  return countermeasures.reduce((boost, countermeasure) => {
+    const level = state.controls[countermeasure.id] || 0;
+    return boost + (countermeasure.seizureBoost || 0) * level;
+  }, 0);
+}
+
+function tick() {
+  if (!state.running || state.ended) return;
+
+  state.elapsedHours += HOURS_PER_TICK;
+  completeDeployments();
+  adaptAi();
+
+  const revenueRate = 820 * (1 - calculateRevenueDrag()) * (state.trust / 100);
+  const safeRevenueRate = Math.max(120, revenueRate);
+  state.legitimateRevenue += safeRevenueRate;
+  state.budget += safeRevenueRate * 0.18;
+
+  typologies.forEach(typology => {
+    state.typologyPressure[typology.id] += typology.growth * state.aiSophistication;
+    resolveTypology(typology);
+  });
+
+  state.fraudMl = clamp(state.fraudMl - Object.values(state.controls).reduce((sum, level) => sum + level, 0) * 0.025, 0, 150);
+
+  if (state.fraudMl >= LOSS_FRAUD_THRESHOLD || state.trust <= 5) {
+    endGame(false);
+  } else if (getDay() > WIN_DAY && state.fraudMl < 35 && state.trust >= 45) {
+    endGame(true);
+  }
+
   render();
 }
 
-function formatStatName(stat) {
-  return stat.replace(/([A-Z])/g, ' $1').replace(/^./, letter => letter.toUpperCase());
+function endGame(won) {
+  state.running = false;
+  state.ended = true;
+  clearInterval(loopId);
+  loopId = null;
+  addLog(won
+    ? 'Victory: Day 30 reached with fraud contained and public trust intact.'
+    : 'Crisis: Fraud/ML overwhelmed the economy and public trust collapsed.');
 }
 
-function getOutcome() {
-  const average = Object.values(state.stats).reduce((sum, value) => sum + value, 0) / 5;
-  if (state.stats.integrity < 35 || state.stats.regulatorTrust < 35) {
-    return {
-      className: 'bad',
-      label: 'Enforcement storm',
-      text: 'Your institution faces severe supervisory attention. The lesson: weak candour, poor SAR handling, or compromised independence can destroy trust faster than any product launch can rebuild it.'
-    };
-  }
+function deployCountermeasure(countermeasure) {
+  if (state.ended) return;
 
-  if (average >= 75 && state.stats.riskControl >= 70) {
-    return {
-      className: 'good',
-      label: 'Trusted MLRO leader',
-      text: 'You finish as a respected MLRO/CCO. The regulator sees an honest, evidence-led function; the board funds remediation; and teams understand that compliance protects growth.'
-    };
-  }
-
-  return {
-    className: 'warn',
-    label: 'Developing compliance leader',
-    text: 'You kept the institution moving, but your scorecard shows gaps. Review where morale, budget, control quality, or regulator confidence suffered and replay to test a different risk appetite.'
-  };
-}
-
-function renderHierarchy() {
-  elements.hierarchyList.innerHTML = '';
-  roleHierarchy.forEach((role, index) => {
-    const item = document.createElement('li');
-    item.textContent = role;
-    if (index === state.roleIndex) item.classList.add('current');
-    elements.hierarchyList.appendChild(item);
-  });
-}
-
-function renderStats() {
-  elements.statsGrid.innerHTML = '';
-  Object.entries(state.stats).forEach(([stat, value]) => {
-    const card = document.createElement('div');
-    card.className = 'stat';
-    card.innerHTML = `<span>${formatStatName(stat)}</span><strong>${value}</strong>`;
-    elements.statsGrid.appendChild(card);
-  });
-}
-
-function renderDuties(scene) {
-  elements.dutiesList.innerHTML = '';
-  if (!scene.duties?.length) {
-    elements.dutiesBox.hidden = true;
+  if (countermeasure.requiresSeizedFunds) {
+    if (state.seizedFunds < 1000) {
+      addLog('Not enough seized funds are available to reinvest.');
+      render();
+      return;
+    }
+    const reinvested = Math.min(state.seizedFunds, 6000);
+    state.seizedFunds -= reinvested;
+    state.deployments.push({ id: countermeasure.id, remainingHours: countermeasure.deploymentHours, reinvested });
+    addLog(`Approved reinvestment of ${formatMoney(reinvested)} in legitimate revenue capacity.`);
+    render();
     return;
   }
 
-  scene.duties.forEach(duty => {
-    const item = document.createElement('li');
-    item.textContent = duty;
-    elements.dutiesList.appendChild(item);
-  });
-  elements.dutiesBox.hidden = false;
-}
+  const currentLevel = state.controls[countermeasure.id] || 0;
+  const scaledCost = countermeasure.cost * (1 + currentLevel * 0.45);
 
-function renderChoices(scene) {
-  elements.choices.innerHTML = '';
-  if (state.scene === 'finale') {
-    const restart = elements.choiceTemplate.content.cloneNode(true);
-    const button = restart.querySelector('button');
-    restart.querySelector('.choice-title').textContent = 'Replay with a different risk appetite';
-    restart.querySelector('.choice-detail').textContent = 'Try another path through the compliance officer and MLRO life-cycle.';
-    button.addEventListener('click', resetGame);
-    elements.choices.appendChild(restart);
+  if (state.budget < scaledCost) {
+    addLog(`${countermeasure.title} requires ${formatMoney(scaledCost)}, but the budget is only ${formatMoney(state.budget)}.`);
+    render();
     return;
   }
 
-  scene.choices.forEach(choice => {
-    const clone = elements.choiceTemplate.content.cloneNode(true);
+  state.budget -= scaledCost;
+  state.deployments.push({ id: countermeasure.id, remainingHours: countermeasure.deploymentHours });
+  addLog(`Deployment started: ${countermeasure.title} (${countermeasure.deploymentHours} in-game hours).`);
+  render();
+}
+
+function startSimulation() {
+  if (state.ended) state = structuredClone(initialState);
+  state.running = true;
+  addLog('Simulation clock started. Revenue, threats, and controls now update continuously.');
+  if (!loopId) loopId = setInterval(tick, TICK_MS);
+  render();
+}
+
+function pauseSimulation() {
+  state.running = !state.running;
+  addLog(state.running ? 'Simulation resumed.' : 'Simulation paused for strategic review.');
+  if (state.running && !loopId) loopId = setInterval(tick, TICK_MS);
+  render();
+}
+
+function resetSimulation() {
+  clearInterval(loopId);
+  loopId = null;
+  state = structuredClone(initialState);
+  localStorage.removeItem(SAVE_KEY);
+  render();
+}
+
+function saveSimulation() {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  addLog('Game state saved locally.');
+  render();
+}
+
+function loadSimulation() {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) {
+    addLog('No saved game found.');
+    render();
+    return;
+  }
+
+  state = { ...structuredClone(initialState), ...JSON.parse(raw), running: false };
+  clearInterval(loopId);
+  loopId = null;
+  addLog('Saved game loaded and paused.');
+  render();
+}
+
+function renderMetrics() {
+  elements.metricsGrid.innerHTML = '';
+  metricDefinitions.forEach(([key, label, help]) => {
+    const clone = elements.metricTemplate.content.cloneNode(true);
+    clone.querySelector('.metric-label').textContent = label;
+    clone.querySelector('.metric-value').textContent = key.includes('Revenue') || key.includes('Funds') || key === 'budget'
+      ? formatMoney(state[key])
+      : formatNumber(state[key]);
+    clone.querySelector('.metric-help').textContent = help;
+    elements.metricsGrid.appendChild(clone);
+  });
+}
+
+function renderTypologies() {
+  elements.typologyList.innerHTML = '';
+  typologies.forEach(typology => {
+    const pressure = state.typologyPressure[typology.id];
+    const protection = getActiveControlsFor(typology.id);
+    const risk = clamp(pressure * state.aiSophistication * 7 - protection * 0.5, 0, 100);
+    const clone = elements.typologyTemplate.content.cloneNode(true);
+    clone.querySelector('h3').textContent = typology.name;
+    clone.querySelector('.risk-badge').textContent = `${Math.round(risk)} risk`;
+    clone.querySelector('.risk-badge').className = `risk-badge ${risk > 65 ? 'danger' : risk > 35 ? 'warning' : 'good'}`;
+    clone.querySelector('.typology-description').textContent = typology.description;
+    clone.querySelector('.bar span').style.width = `${risk}%`;
+    clone.querySelector('dl').innerHTML = `
+      <div><dt>AI pressure</dt><dd>${pressure.toFixed(1)}</dd></div>
+      <div><dt>Control coverage</dt><dd>${Math.round(protection)}%</dd></div>
+      <div><dt>Best counters</dt><dd>${typology.counteredBy.map(formatCounterName).join(', ')}</dd></div>`;
+    elements.typologyList.appendChild(clone);
+  });
+}
+
+function formatCounterName(id) {
+  return countermeasures.find(countermeasure => countermeasure.id === id)?.title || id;
+}
+
+function renderCountermeasures() {
+  elements.countermeasureList.innerHTML = '';
+  countermeasures.forEach((countermeasure, index) => {
+    const level = state.controls[countermeasure.id] || 0;
+    const scaledCost = countermeasure.requiresSeizedFunds ? 0 : countermeasure.cost * (1 + level * 0.45);
+    const clone = elements.countermeasureTemplate.content.cloneNode(true);
     const button = clone.querySelector('button');
-    clone.querySelector('.choice-title').textContent = choice.title;
-    clone.querySelector('.choice-detail').textContent = choice.detail;
-    button.addEventListener('click', () => applyChoice(choice));
-    elements.choices.appendChild(clone);
+    clone.querySelector('.countermeasure-title').textContent = `${index + 1}. ${countermeasure.title}`;
+    clone.querySelector('.countermeasure-detail').textContent = `${countermeasure.type}: ${countermeasure.detail}`;
+    clone.querySelector('.countermeasure-meta').textContent = countermeasure.requiresSeizedFunds
+      ? `Uses seized funds · ${countermeasure.deploymentHours}h deployment`
+      : `${formatMoney(scaledCost)} · ${countermeasure.deploymentHours}h deployment · Level ${level}`;
+    button.disabled = state.ended || (!countermeasure.requiresSeizedFunds && state.budget < scaledCost);
+    button.addEventListener('click', () => deployCountermeasure(countermeasure));
+    elements.countermeasureList.appendChild(clone);
   });
+}
+
+function renderBrief() {
+  const leastProtected = typologies
+    .map(typology => ({ typology, protection: getActiveControlsFor(typology.id), pressure: state.typologyPressure[typology.id] }))
+    .sort((a, b) => b.pressure * state.aiSophistication - b.protection - (a.pressure * state.aiSophistication - a.protection))[0];
+  const activeDeployments = state.deployments.length
+    ? `<ul>${state.deployments.map(deployment => {
+        const countermeasure = countermeasures.find(item => item.id === deployment.id);
+        return `<li>${countermeasure.title}: ${Math.max(0, deployment.remainingHours)}h remaining</li>`;
+      }).join('')}</ul>`
+    : '<p>No deployments are currently in progress.</p>';
+
+  elements.intelligenceBrief.innerHTML = `
+    <p><strong>AI adaptation:</strong> Criminal networks exploit the weakest typology coverage and grow more sophisticated each day. Current sophistication is <strong>${state.aiSophistication.toFixed(2)}x</strong>.</p>
+    <p><strong>Priority risk:</strong> ${leastProtected.typology.name}. Increase relevant controls or deploy a specialist task force before pressure converts into illicit funds.</p>
+    <p><strong>Deployments in progress:</strong></p>
+    ${activeDeployments}
+    <p class="training-note">Education note: effective AML programs combine prevention (KYC, monitoring), detection (analytics, investigations), disruption (SAR/STR and task forces), and feedback loops (R&D and governance).</p>`;
 }
 
 function renderLog() {
-  elements.careerLog.innerHTML = '';
-  const entries = state.log.length ? state.log : ['No career decisions recorded yet.'];
-  entries.forEach(entry => {
+  elements.operationsLog.innerHTML = '';
+  state.log.forEach(entry => {
     const item = document.createElement('li');
     item.textContent = entry;
-    elements.careerLog.appendChild(item);
+    elements.operationsLog.appendChild(item);
   });
 }
 
-function renderSceneBody(scene) {
-  if (state.scene === 'finale') {
-    const outcome = getOutcome();
-    elements.sceneBody.innerHTML = `
-      <p><span class="${outcome.className}">${outcome.label}:</span> ${outcome.text}</p>
-      <p>Your final scorecard reflects the trade-offs you made across the career life-cycle. In a real institution, these decisions would be supported by legal advice, documented governance, policies, training, assurance testing, audit, and clear board accountability.</p>
-      <ul>
-        <li><strong>Integrity</strong> measures independence, honesty, and resistance to inappropriate pressure.</li>
-        <li><strong>Risk control</strong> measures the quality of KYC, monitoring, investigations, reporting, and remediation.</li>
-        <li><strong>Regulator trust</strong> measures candour, evidence, reporting quality, and supervisory confidence.</li>
-        <li><strong>Morale</strong> measures whether colleagues see compliance as practical and collaborative.</li>
-        <li><strong>Budget</strong> measures resource discipline and the cost of controls, crises, and remediation.</li>
-      </ul>`;
-    return;
-  }
-
-  elements.sceneBody.innerHTML = scene.body.map(paragraph => `<p>${paragraph}</p>`).join('');
-}
-
 function render() {
-  const scene = scenes[state.scene];
-  elements.chapterLabel.textContent = scene.chapter;
-  elements.sceneTitle.textContent = scene.title;
-  renderSceneBody(scene);
-  renderDuties(scene);
-  renderChoices(scene);
-  renderHierarchy();
-  renderStats();
+  const day = getDay();
+  const hour = getHour() % 24;
+  const threat = calculateThreat();
+
+  elements.clockLabel.textContent = `Day ${day} · ${String(hour).padStart(2, '0')}:00`;
+  elements.statusLabel.textContent = state.ended ? 'Ended' : state.running ? 'Live' : 'Paused';
+  elements.threatLabel.textContent = `AI pressure: ${threat > 35 ? 'High' : threat > 20 ? 'Medium' : 'Low'}`;
+  elements.budgetLabel.textContent = `Budget ${formatMoney(state.budget)}`;
+  elements.startButton.disabled = state.running && !state.ended;
+  elements.pauseButton.textContent = state.running ? 'Pause' : 'Resume';
+
+  renderMetrics();
+  renderTypologies();
+  renderCountermeasures();
+  renderBrief();
   renderLog();
 }
 
-function startGame() {
-  state = structuredClone(initialState);
-  render();
+function handleKeyboard(event) {
+  if (event.code === 'Space') {
+    event.preventDefault();
+    pauseSimulation();
+    return;
+  }
+
+  if (event.key.toLowerCase() === 's') saveSimulation();
+  if (event.key.toLowerCase() === 'l') loadSimulation();
+
+  const index = Number(event.key) - 1;
+  if (Number.isInteger(index) && countermeasures[index]) {
+    deployCountermeasure(countermeasures[index]);
+  }
 }
 
-function resetGame() {
-  startGame();
-}
-
-elements.startButton.addEventListener('click', startGame);
-elements.restartButton.addEventListener('click', resetGame);
+elements.startButton.addEventListener('click', startSimulation);
+elements.pauseButton.addEventListener('click', pauseSimulation);
+elements.saveButton.addEventListener('click', saveSimulation);
+elements.loadButton.addEventListener('click', loadSimulation);
+elements.restartButton.addEventListener('click', resetSimulation);
+document.addEventListener('keydown', handleKeyboard);
 render();

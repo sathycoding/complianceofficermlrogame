@@ -3,65 +3,114 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FinShield MLRO: Compliance Officer Training Game</title>
+  <title>Anti-Money Laundering Simulator</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main class="game-shell">
     <section class="hero-card" aria-labelledby="game-title">
-      <p class="eyebrow">Interactive training simulation</p>
-      <h1 id="game-title">FinShield MLRO: The Compliance Officer Life-Cycle</h1>
-      <p class="intro">
-        Interview for a regulated fintech role, build the second line of defence,
-        investigate financial-crime alerts, report to senior management, and face
-        the regulator. Decisions matter: your integrity, risk control, regulator
-        confidence, morale, and budget change as you play.
-      </p>
-      <div class="hero-actions">
-        <button id="start-button" type="button">Start new career</button>
-        <button id="restart-button" type="button" class="secondary">Restart</button>
-      </div>
-    </section>
-
-    <section class="dashboard" aria-label="Game dashboard">
-      <article class="panel profile-panel">
-        <h2>Role hierarchy</h2>
-        <ol id="hierarchy-list" class="hierarchy-list"></ol>
-      </article>
-
-      <article class="panel score-panel">
-        <h2>Decision scorecard</h2>
-        <div id="stats-grid" class="stats-grid"></div>
-      </article>
-    </section>
-
-    <section class="panel story-panel" aria-live="polite">
-      <div class="chapter-label" id="chapter-label">Awaiting start</div>
-      <h2 id="scene-title">Welcome to FinShield Bank & Payments</h2>
-      <div id="scene-body" class="scene-body">
-        <p>
-          You are about to experience the life-cycle of a compliance officer and
-          Money Laundering Reporting Officer (MLRO) in a fast-growing fintech
-          preparing for bank partnership scrutiny. Press start when you are ready.
+      <div>
+        <p class="eyebrow">Real-time economic crime strategy simulator</p>
+        <h1 id="game-title">Anti-Money Laundering Simulator</h1>
+        <p class="intro">
+          You are the Crime Stopper responsible for protecting a growing digital
+          economy. Revenue flows constantly, criminal networks adapt in real time,
+          and every countermeasure changes the balance between growth, trust, and
+          fraud/ML exposure.
         </p>
       </div>
-      <div id="duties-box" class="duties-box" hidden>
-        <h3>Duties in focus</h3>
-        <ul id="duties-list"></ul>
+      <div class="hero-actions" aria-label="Simulation controls">
+        <button id="start-button" type="button">Start simulation</button>
+        <button id="pause-button" type="button" class="secondary">Pause</button>
+        <button id="save-button" type="button" class="secondary">Save</button>
+        <button id="load-button" type="button" class="secondary">Load</button>
+        <button id="restart-button" type="button" class="danger-button">Reset</button>
       </div>
-      <div id="choices" class="choices"></div>
     </section>
 
-    <section class="panel log-panel">
-      <h2>Career log</h2>
-      <ol id="career-log" class="career-log"></ol>
+    <section class="dashboard" aria-label="Economic dashboard">
+      <article class="panel score-panel">
+        <div class="panel-heading">
+          <h2>Economic command center</h2>
+          <span id="clock-label" class="pill">Day 1 · 08:00</span>
+        </div>
+        <div id="metrics-grid" class="metrics-grid"></div>
+      </article>
+
+      <article class="panel objective-panel">
+        <h2>Mission</h2>
+        <p>
+          Keep <strong>Fraud/ML</strong> as close to zero as possible while sustaining
+          legitimate revenue. Win by reaching Day 30 with a stable economy and
+          suppressed illicit activity; lose if fraud overwhelms public trust.
+        </p>
+        <ul class="mission-list">
+          <li><kbd>1</kbd>–<kbd>9</kbd>: deploy a countermeasure</li>
+          <li><kbd>Space</kbd>: pause or resume</li>
+          <li><kbd>S</kbd>: save · <kbd>L</kbd>: load</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="layout-grid">
+      <article class="panel threat-panel">
+        <div class="panel-heading">
+          <h2>Active laundering typologies</h2>
+          <span id="threat-label" class="pill warning">AI pressure: Low</span>
+        </div>
+        <div id="typology-list" class="typology-list"></div>
+      </article>
+
+      <article class="panel action-panel">
+        <div class="panel-heading">
+          <h2>Deploy countermeasures</h2>
+          <span id="budget-label" class="pill">Budget $0</span>
+        </div>
+        <div id="countermeasure-list" class="countermeasure-list"></div>
+      </article>
+    </section>
+
+    <section class="layout-grid lower-grid">
+      <article class="panel intelligence-panel">
+        <h2>Intelligence brief</h2>
+        <div id="intelligence-brief" class="scene-body"></div>
+      </article>
+
+      <article class="panel log-panel" aria-live="polite">
+        <div class="panel-heading">
+          <h2>Operations log</h2>
+          <span id="status-label" class="pill">Ready</span>
+        </div>
+        <ol id="operations-log" class="operations-log"></ol>
+      </article>
     </section>
   </main>
 
-  <template id="choice-template">
-    <button type="button" class="choice-card">
-      <span class="choice-title"></span>
-      <span class="choice-detail"></span>
+  <template id="metric-template">
+    <div class="metric-card">
+      <span class="metric-label"></span>
+      <strong class="metric-value"></strong>
+      <small class="metric-help"></small>
+    </div>
+  </template>
+
+  <template id="typology-template">
+    <article class="typology-card">
+      <div class="card-header">
+        <h3></h3>
+        <span class="risk-badge"></span>
+      </div>
+      <p class="typology-description"></p>
+      <div class="bar" aria-hidden="true"><span></span></div>
+      <dl></dl>
+    </article>
+  </template>
+
+  <template id="countermeasure-template">
+    <button type="button" class="countermeasure-card">
+      <span class="countermeasure-title"></span>
+      <span class="countermeasure-detail"></span>
+      <span class="countermeasure-meta"></span>
     </button>
   </template>
 
