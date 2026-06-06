@@ -1,131 +1,897 @@
 const SAVE_KEY = 'aml-simulator-state-v2';
-const LEGACY_SAVE_KEY = 'aml-simulator-state-v1';
-const CAREER_KEY = 'aml-simulator-career-v1';
-const LEADERBOARD_KEY = 'aml-training-leaderboard-v1';
-const SPEED_KEY = 'aml-preferred-speed';
-const LANGUAGE_KEY = 'aml-language';
-const TUTORIAL_KEY = 'aml-tutorial-done';
-let TICK_MS = Number(localStorage.getItem('aml-tick-interval') || 1000);
+let TICK_MS = 1000;
 const HOURS_PER_TICK = 2;
-let WIN_DAY = 45;
-let LEGACY_LOSS_THRESHOLD = 160;
+const WIN_DAY = 45;
+const LEGACY_LOSS_THRESHOLD = 160;
 const LOSS_FRAUD_THRESHOLD = LEGACY_LOSS_THRESHOLD;
 
 const typologies = [
-  { id: 'structuring', name: 'Structuring (Smurfing)', description: 'Cash or transfer values are broken into small transactions to avoid reporting thresholds.', basePressure: 1.4, growth: 0.05, impact: 1.1, detection: 30, counteredBy: ['monitoring', 'kyc', 'fiu'], predicate: 'Tax evasion, narcotics, corruption', example: 'Mule cells split deposits across branches before wallet conversion.' },
-  { id: 'tbml', name: 'Trade-Based Money Laundering', description: 'Criminal proceeds move through over-invoicing, under-invoicing, phantom shipments, or mismatched goods.', basePressure: 1.0, growth: 0.065, impact: 1.45, detection: 24, counteredBy: ['tradeAnalytics', 'fiu', 'rd'], predicate: 'Sanctions evasion, customs fraud', example: 'Electronics invoices are inflated across free-zone re-export corridors.' },
-  { id: 'realEstate', name: 'Real Estate Laundering', description: 'Illicit funds are integrated through property purchases, shell companies, nominees, and rapid resales.', basePressure: 0.85, growth: 0.075, impact: 1.6, detection: 18, counteredBy: ['beneficialOwnership', 'kyc', 'fiu'], predicate: 'Bribery, embezzlement, organized crime', example: 'A nominee buys luxury property through layered SPVs.' },
-  { id: 'cyber', name: 'Cyber Laundering', description: 'Crypto rails, mule accounts, online games, and digital platforms obscure source and movement of funds.', basePressure: 1.2, growth: 0.08, impact: 1.35, detection: 22, counteredBy: ['cyberUnit', 'monitoring', 'rd'], predicate: 'Fraud, ransomware, scams', example: 'Pig-butchering proceeds are swapped through mixers and mule cards.' },
-  { id: 'pf', name: 'Proliferation Financing', description: 'Procurement networks abuse correspondent banks, dual-use goods, and trade finance to fund restricted programs.', basePressure: 0.55, growth: 0.055, impact: 1.7, detection: 15, counteredBy: ['tradeAnalytics', 'beneficialOwnership', 'federatedIntel'], predicate: 'Export control evasion', example: 'Dual-use components route through front companies and nested correspondents.' }
+  {
+    id: 'structuring',
+    name: 'Structuring (Smurfing)',
+    description: 'Cash or transfer values are broken into small transactions to avoid reporting thresholds.',
+    basePressure: 1.4,
+    growth: 0.05,
+    impact: 1.1,
+    detection: 30,
+    counteredBy: ['monitoring', 'kyc', 'fiu']
+  },
+  {
+    id: 'tbml',
+    name: 'Trade-Based Money Laundering',
+    description: 'Criminal proceeds move through over-invoicing, under-invoicing, phantom shipments, or mismatched goods.',
+    basePressure: 1.0,
+    growth: 0.065,
+    impact: 1.45,
+    detection: 24,
+    counteredBy: ['tradeAnalytics', 'fiu', 'rd']
+  },
+  {
+    id: 'realEstate',
+    name: 'Real Estate Laundering',
+    description: 'Illicit funds are integrated through property purchases, shell companies, nominees, and rapid resales.',
+    basePressure: 0.85,
+    growth: 0.075,
+    impact: 1.6,
+    detection: 18,
+    counteredBy: ['beneficialOwnership', 'kyc', 'fiu']
+  },
+  {
+    id: 'cyber',
+    short: 'Cyber',
+    name: 'Cyber Laundering',
+    description: 'Crypto rails, mule accounts, online games, and digital platforms obscure source and movement of funds.',
+    basePressure: 1.2,
+    growth: 0.08,
+    impact: 1.35,
+    detection: 22,
+    counteredBy: ['cyberUnit', 'monitoring', 'rd']
+  }
+  ,{
+    id: 'muleNetworks', short: 'Mules', name: 'Mule Networks', description: 'Recruiters use customers and students as pass-through accounts for scam proceeds.', basePressure: 0.35, growth: 0.018, impact: 0.7, detection: 28, counteredBy: ['monitoring', 'kyc', 'awareness']
+  },
+  { id: 'sanctionsEvasion', short: 'Sanctions', name: 'Sanctions Evasion', description: 'Restricted parties obscure ownership, routes, and payments to bypass sanctions screening.', basePressure: 0.28, growth: 0.014, impact: 0.9, detection: 21, counteredBy: ['beneficialOwnership', 'tradeAnalytics', 'fiu'] },
+  { id: 'proliferationFinancing', short: 'PF', name: 'Proliferation Financing', description: 'Dual-use goods and correspondent channels are abused to finance restricted programmes.', basePressure: 0.22, growth: 0.013, impact: 1.0, detection: 18, counteredBy: ['tradeAnalytics', 'beneficialOwnership', 'fiu'] },
+  { id: 'terroristFinancing', short: 'TF', name: 'Terrorist Financing', description: 'Low-value fundraising and charity abuse move funds to violent extremist networks.', basePressure: 0.24, growth: 0.014, impact: 0.95, detection: 23, counteredBy: ['monitoring', 'kyc', 'fiu'] },
+  { id: 'humanTrafficking', short: 'HT', name: 'Human Trafficking', description: 'Exploiters launder illicit proceeds through cash-intensive and gig-economy activity.', basePressure: 0.26, growth: 0.016, impact: 0.85, detection: 20, counteredBy: ['monitoring', 'fiu', 'awareness'] },
+  { id: 'corruption', short: 'Corruption', name: 'Corruption & Bribery', description: 'Bribe proceeds are layered through PEP associates, shell entities, and luxury assets.', basePressure: 0.25, growth: 0.015, impact: 0.9, detection: 19, counteredBy: ['beneficialOwnership', 'kyc', 'fiu'] },
+  { id: 'taxEvasion', short: 'Tax', name: 'Tax Evasion', description: 'Undeclared income is hidden through nominees, offshore structures, and trade mispricing.', basePressure: 0.25, growth: 0.015, impact: 0.75, detection: 25, counteredBy: ['tradeAnalytics', 'beneficialOwnership', 'kyc'] },
+  { id: 'predicateFraud', short: 'Fraud', name: 'Predicate Fraud', description: 'Authorised push payment fraud, scams, and identity crime feed laundering pipelines.', basePressure: 0.32, growth: 0.018, impact: 0.82, detection: 26, counteredBy: ['monitoring', 'cyberUnit', 'awareness'] },
+  { id: 'cashCourier', short: 'Cash', name: 'Cash Couriers', description: 'Physical cash is moved across borders and reintroduced through deposits or exchanges.', basePressure: 0.22, growth: 0.012, impact: 0.7, detection: 27, counteredBy: ['monitoring', 'kyc', 'fiu'] },
+  { id: 'governanceFailure', short: 'Governance', name: 'Governance Failure', description: 'Weak governance, poor escalation, and stale controls let multiple typologies compound.', basePressure: 0.18, growth: 0.011, impact: 0.8, detection: 24, counteredBy: ['rd', 'fiu', 'kyc'] },
+  { id: 'hawala', short: 'Hawala', name: 'Informal Value Transfer / Hawala', description: 'Informal brokers net obligations outside formal banking records.', basePressure: 0.24, growth: 0.014, impact: 0.78, detection: 20, counteredBy: ['kyc', 'monitoring', 'fiu'] }
+
 ];
 
 const countermeasures = [
-  { id: 'monitoring', title: 'Digital transaction monitoring', type: 'Preventive measure', detail: 'Rules, scenarios, and anomaly models tuned to velocity, thresholds, and linked accounts.', cost: 6500, deploymentHours: 8, effectiveness: 16, targets: ['structuring', 'cyber'], revenueDrag: 0.02 },
-  { id: 'kyc', title: 'Stricter KYC / EDD program', type: 'Preventive measure', detail: 'Risk-tiered onboarding, source-of-funds checks, adverse media, and periodic reviews.', cost: 5200, deploymentHours: 6, effectiveness: 14, targets: ['structuring', 'realEstate'], revenueDrag: 0.035 },
-  { id: 'fiu', title: 'Financial intelligence task force', type: 'Task force', detail: 'Investigators triage alerts, connect networks, file reports, and seize suspect funds.', cost: 7800, deploymentHours: 10, effectiveness: 18, targets: ['structuring', 'tbml', 'realEstate'], seizureBoost: 0.2 },
-  { id: 'tradeAnalytics', title: 'Trade anomaly analytics', type: 'Preventive measure', detail: 'Compares invoices, routes, goods, and pricing against trade and customs intelligence.', cost: 7200, deploymentHours: 9, effectiveness: 20, targets: ['tbml', 'pf'], revenueDrag: 0.015 },
-  { id: 'beneficialOwnership', title: 'Beneficial ownership registry checks', type: 'Preventive measure', detail: 'Maps shell companies, nominees, PEP links, and property holding structures.', cost: 6100, deploymentHours: 7, effectiveness: 17, targets: ['realEstate', 'pf'], revenueDrag: 0.015 },
-  { id: 'cyberUnit', title: 'Cybercrime disruption unit', type: 'Task force', detail: 'Specialists trace wallets, mule networks, compromised accounts, and platform abuse.', cost: 8300, deploymentHours: 8, effectiveness: 21, targets: ['cyber'], seizureBoost: 0.25 },
-  { id: 'rd', title: 'Research & development lab', type: 'R&D', detail: 'Unlocks typology intelligence and improves every deployed control over time.', cost: 9500, deploymentHours: 12, effectiveness: 8, targets: ['tbml', 'cyber'], globalBoost: 0.08 },
-  { id: 'aiAnomaly', title: 'AI anomaly detection', type: 'Technology', detail: 'Machine learning models identify emergent laundering patterns.', cost: 10500, deploymentHours: 14, effectiveness: 18, targets: ['structuring', 'cyber', 'tbml'], requires: 'monitoring' },
-  { id: 'federatedIntel', title: 'Federated intelligence exchange', type: 'Technology', detail: 'Privacy-preserving consortium signals expose cross-border networks.', cost: 12000, deploymentHours: 16, effectiveness: 22, targets: ['pf', 'tbml', 'cyber'], requires: 'aiAnomaly' },
-  { id: 'predictiveRisk', title: 'Predictive risk engine', type: 'Technology', detail: 'Forecasts pressure auctions and pre-positions controls.', cost: 13500, deploymentHours: 18, effectiveness: 24, targets: ['pf', 'realEstate', 'cyber'], requires: 'federatedIntel' },
-  { id: 'awareness', title: 'Public awareness campaign', type: 'Preventive measure', detail: 'Educates customers and staff about mule recruitment, scams, and reporting red flags.', cost: 3600, deploymentHours: 4, effectiveness: 9, targets: ['structuring', 'cyber'], revenueDrag: 0.005 },
-  { id: 'reinvest', title: 'Reinvest seized funds', type: 'Capital allocation', detail: 'Return recovered money into legitimate programs and increase productive revenue.', cost: 0, deploymentHours: 2, effectiveness: 0, targets: [], requiresSeizedFunds: true }
+  {
+    id: 'monitoring',
+    title: 'Digital transaction monitoring',
+    type: 'Preventive measure',
+    detail: 'Rules, scenarios, and anomaly models tuned to velocity, thresholds, and linked accounts.',
+    cost: 6500,
+    deploymentHours: 8,
+    effectiveness: 16,
+    targets: ['structuring', 'cyber'],
+    revenueDrag: 0.02
+  },
+  {
+    id: 'kyc',
+    title: 'Stricter KYC / EDD program',
+    type: 'Preventive measure',
+    detail: 'Risk-tiered onboarding, source-of-funds checks, adverse media, and periodic reviews.',
+    cost: 5200,
+    deploymentHours: 6,
+    effectiveness: 14,
+    targets: ['structuring', 'realEstate'],
+    revenueDrag: 0.035
+  },
+  {
+    id: 'fiu',
+    title: 'Financial intelligence task force',
+    type: 'Task force',
+    detail: 'Investigators triage alerts, connect networks, file reports, and seize suspect funds.',
+    cost: 7800,
+    deploymentHours: 10,
+    effectiveness: 18,
+    targets: ['structuring', 'tbml', 'realEstate'],
+    seizureBoost: 0.2
+  },
+  {
+    id: 'tradeAnalytics',
+    title: 'Trade anomaly analytics',
+    type: 'Preventive measure',
+    detail: 'Compares invoices, routes, goods, and pricing against trade and customs intelligence.',
+    cost: 7200,
+    deploymentHours: 9,
+    effectiveness: 20,
+    targets: ['tbml'],
+    revenueDrag: 0.015
+  },
+  {
+    id: 'beneficialOwnership',
+    title: 'Beneficial ownership registry checks',
+    type: 'Preventive measure',
+    detail: 'Maps shell companies, nominees, PEP links, and property holding structures.',
+    cost: 6100,
+    deploymentHours: 7,
+    effectiveness: 17,
+    targets: ['realEstate'],
+    revenueDrag: 0.015
+  },
+  {
+    id: 'cyberUnit',
+    title: 'Cybercrime disruption unit',
+    type: 'Task force',
+    detail: 'Specialists trace wallets, mule networks, compromised accounts, and platform abuse.',
+    cost: 8300,
+    deploymentHours: 8,
+    effectiveness: 21,
+    targets: ['cyber'],
+    seizureBoost: 0.25
+  },
+  {
+    id: 'rd',
+    title: 'Research & development lab',
+    type: 'R&D',
+    detail: 'Unlocks typology intelligence and improves every deployed control over time.',
+    cost: 9500,
+    deploymentHours: 12,
+    effectiveness: 8,
+    targets: ['tbml', 'cyber'],
+    globalBoost: 0.08
+  },
+  {
+    id: 'awareness',
+    title: 'Public awareness campaign',
+    type: 'Preventive measure',
+    detail: 'Educates customers and staff about mule recruitment, scams, and reporting red flags.',
+    cost: 3600,
+    deploymentHours: 4,
+    effectiveness: 9,
+    targets: ['structuring', 'cyber'],
+    revenueDrag: 0.005
+  },
+  {
+    id: 'reinvest',
+    title: 'Reinvest seized funds',
+    type: 'Capital allocation',
+    detail: 'Return recovered money into legitimate programs and increase productive revenue.',
+    cost: 0,
+    deploymentHours: 2,
+    effectiveness: 0,
+    targets: [],
+    requiresSeizedFunds: true
+  }
 ];
-const employees = [{role:'Investigator', cost:1800},{role:'QA Analyst', cost:1500},{role:'Sanctions Specialist', cost:1700},{role:'Data Analyst', cost:1900}];
-const metricDefinitions = [['legitimateRevenue','Legitimate revenue','Productive economic output.'],['budget','Budget','Available funds for controls.'],['fraudMl','Fraud/ML','Current illicit activity pressure.'],['illicitFunds','Illicit funds','Total laundered value.'],['seizedFunds','Seized funds','Recovered value.'],['trust','Public trust','Confidence in your institution.'],['regulatorRelationship','Regulator','Supervisory relationship score.']];
-const glossary = {AML:'Anti-money laundering controls that prevent, detect, and report criminal proceeds.',CTF:'Counter-terrorist financing measures.',CPF:'Counter-proliferation financing controls.',KYC:'Know Your Customer due diligence.',EDD:'Enhanced due diligence for higher-risk customers.',STR:'Suspicious Transaction Report.',SAR:'Suspicious Activity Report.',UBO:'Ultimate beneficial owner.',PEP:'Politically exposed person.',FATF:'Financial Action Task Force standards body.',MLRO:'Money Laundering Reporting Officer.'};
-const translations = { en:{start:'Start simulation',pause:'Pause',eyebrow:'Real-time economic crime strategy simulator',intro:'Protect a financial institution through a supervisory cycle while criminal networks adapt in real time.'}, ar:{start:'بدء المحاكاة',pause:'إيقاف مؤقت',eyebrow:'محاكي جرائم مالية لحظي',intro:'احمِ مؤسسة مالية خلال دورة رقابية بينما تتكيف الشبكات الإجرامية.'}, fr:{start:'Démarrer',pause:'Pause',eyebrow:'Simulateur de criminalité financière en temps réel',intro:'Protégez une institution financière pendant un cycle de supervision.'} };
-const scenarios = { bahrainBrief:{name:'Bahrain Brief', jurisdiction:'Bahrain', company:'Gulf Digital Bank', difficulty:'Intermediate', notes:['Free-zone trade creates rapid TBML escalation.','Crypto remittance rails attract mule recruiters.','Regulators reward early PF escalation.'], watch:'pf'}, sandstorm:{name:'Sandstorm', jurisdiction:'UAE', company:'Desert Payments', difficulty:'Hard', notes:['High correspondent volume masks nested banking.','Luxury property typologies rise quickly.','Cyber actors pivot after week two.'], watch:'realEstate'}, londonStandard:{name:'London Standard', jurisdiction:'United Kingdom', company:'City Mutual', difficulty:'Standard', notes:['PEP and UBO gaps drive enforcement risk.','STR timeliness is benchmarked heavily.','Trade analytics reduces peer scrutiny.'], watch:'realEstate'}, fincenFiles:{name:'FinCEN Files', jurisdiction:'United States', company:'Metro Correspondent', difficulty:'Hard', notes:['Legacy correspondent relationships create PF exposure.','Late SARs damage trust rapidly.','Rival institution benchmark is aggressive.'], watch:'tbml'} };
 
-function createInitialState() { return { running:false, ended:false, won:null, elapsedHours:0, durationDays:45, seed:'aml-2026', mode:'freeplay', legitimateRevenue:50000, budget:18000, fraudMl:10, illicitFunds:0, escapedFunds:0, seizedFunds:0, trust:72, regulatorRelationship:62, riskAppetite:55, aiSophistication:1, deployments:[], controls:{}, controlDeployDays:{}, controlSpend:0, typologyPressure:Object.fromEntries(typologies.map(t=>[t.id,t.basePressure])), typologyHistory:[], metricHistory:[], log:['Welcome, MLRO. Start the simulation to begin real-time monitoring.'], incidents:[], dailyBriefings:true, dailySnapshots:[], negativeBudgetDays:0, mutations:{}, pressureAuctions:[], activeStr:null, strStats:{filed:0, late:0, decisions:[]}, employees:[], burnout:18, complianceCulture:70, correspondentActive:true, correspondentHistory:[], calendarEvents:[], peerBenchmark:{fraudMl:28, trust:68, regulator:58}, advisorUsed:false, rival:{fraudMl:18, trust:70, regulator:60, controls:[], eventTriggered:false}, firstControl:null, chapterComplete:false, cascade:null }; }
-let state = createInitialState();
-let loopId = null, modalOpen = false, modalQueue = [], speedMultiplier = Number(localStorage.getItem(SPEED_KEY) || 0.5), activeTab = sessionStorage.getItem('aml-active-tab') || 'command', heatSort = 'risk';
-const $ = s => document.querySelector(s); const $$ = s => [...document.querySelectorAll(s)];
-const elements = { startButton:$('#start-button'), pauseButton:$('#pause-button'), saveButton:$('#save-button'), loadButton:$('#load-button'), restartButton:$('#restart-button'), clockLabel:$('#clock-label'), statusLabel:$('#status-label'), threatLabel:$('#threat-label'), budgetLabel:$('#budget-label'), metricsGrid:$('#metrics-grid'), typologyList:$('#typology-list'), countermeasureList:$('#countermeasure-list'), intelligenceBrief:$('#intelligence-brief'), operationsLog:$('#operations-log'), metricTemplate:$('#metric-template'), countermeasureTemplate:$('#countermeasure-template'), modalRoot:$('#modal-root') };
-function formatMoney(v){return `$${Math.round(v||0).toLocaleString()}`;} function formatNumber(v){return Math.round(v||0).toLocaleString();} function clamp(v,min,max){return Math.max(min,Math.min(max,v));} function getDay(){return Math.floor(state.elapsedHours/24)+1;} function getHour(){return 8+(state.elapsedHours%24);} function cssPct(v,max){return `${clamp((v/max)*100,0,100)}%`;}
-function seededValue(text){let h=2166136261; for(const ch of String(text)) h=(h^ch.charCodeAt(0))*16777619; return Math.abs(h);}
-function ensureLoop(){clearInterval(loopId); loopId=null; if(state.running && !state.ended) loopId=setInterval(tick, Math.max(80, TICK_MS / speedMultiplier));}
-function setDuration(days){WIN_DAY=Number(days); LEGACY_LOSS_THRESHOLD=Math.round(160*(WIN_DAY/45)); state.durationDays=WIN_DAY;}
-function getControlEfficiency(c){const day=state.controlDeployDays[c.id]; if(!day) return 100; return clamp(100-(getDay()-day)*1.1,55,100);}
-function hasControl(id){return (state.controls[id]||0)>0;} function formatCounterName(id){return countermeasures.find(c=>c.id===id)?.title||id;}
-function getActiveControlsFor(typologyId){const globalBoost=state.controls.rd?state.controls.rd*0.08:0; return countermeasures.reduce((sum,c)=>{const level=state.controls[c.id]||0; if(!level||!c.targets.includes(typologyId)) return sum; return sum + c.effectiveness*(getControlEfficiency(c)/100)*(1+(level-1)*0.35+globalBoost);},0);}
-function toast(message,type='info'){const icons={critical:'🔴',warning:'🟡',success:'🟢',info:'🔵'}; const node=document.createElement('button'); node.type='button'; node.className=`toast ${type}`; node.textContent=`${icons[type]||'🔵'} ${message}`; node.addEventListener('click',()=>node.classList.toggle('pinned')); $('#toast-stack').prepend(node); [...$('#toast-stack').children].slice(4).forEach(n=>n.remove()); setTimeout(()=>{if(!node.classList.contains('pinned')) node.remove();},5000);}
-function addLog(message, type){const stamp=`Day ${getDay()} ${String(getHour()%24).padStart(2,'0')}:00`; state.log.unshift(`${stamp} — ${message}`); state.log=state.log.slice(0,80); if(type) toast(message,type);}
-function addIncident(message){state.incidents.unshift(`Day ${getDay()} — ${message}`); state.incidents=state.incidents.slice(0,50);}
-function showModal(html,{resume=false,full=false}={}){if(modalOpen){modalQueue.push([html,{resume,full}]); return;} modalOpen=true; state.running=false; ensureLoop(); elements.modalRoot.className=`modal-root ${full?'full-screen':''}`; elements.modalRoot.innerHTML=`<div class="modal-card">${html}</div>`; elements.modalRoot.classList.remove('hidden'); elements.modalRoot.querySelectorAll('[data-close-modal]').forEach(btn=>btn.addEventListener('click',()=>hideModal(resume)));}
-function hideModal(resume=false){elements.modalRoot.classList.add('hidden'); elements.modalRoot.innerHTML=''; modalOpen=false; if(resume && !state.ended){state.running=true; ensureLoop();} flushModalQueue(); render();}
-function flushModalQueue(){if(!modalOpen && modalQueue.length){const [html,opts]=modalQueue.shift(); showModal(html,opts);}}
-function calculateThreat(){return typologies.reduce((sum,t)=>sum+state.typologyPressure[t.id],0)*state.aiSophistication;} function calculateRevenueDrag(){return countermeasures.reduce((d,c)=>d+(c.revenueDrag||0)*(state.controls[c.id]||0),0);} function getSeizureBoost(){return countermeasures.reduce((b,c)=>b+(c.seizureBoost||0)*(state.controls[c.id]||0),0);}
-function completeDeployments(){state.deployments.forEach(d=>d.remainingHours-=HOURS_PER_TICK); const done=state.deployments.filter(d=>d.remainingHours<=0); state.deployments=state.deployments.filter(d=>d.remainingHours>0); done.forEach(d=>{const c=countermeasures.find(x=>x.id===d.id); if(!c)return; if(c.id==='reinvest'){const amount=d.reinvested||0; state.legitimateRevenue+=amount*.9; state.budget+=amount*.25; addLog(`Reinvested ${formatMoney(amount)} in legitimate economic programs.`,'success'); return;} state.controls[c.id]=(state.controls[c.id]||0)+1; state.controlDeployDays[c.id]=getDay(); if(!state.firstControl) state.firstControl=c.id; addLog(`${c.title} is operational at level ${state.controls[c.id]}.`,'success');});}
-function adaptAi(){const least=typologies.map(t=>({typology:t,protection:getActiveControlsFor(t.id)})).sort((a,b)=>a.protection-b.protection)[0]; if(!least)return; state.typologyPressure[least.typology.id]+=0.15*state.aiSophistication; if(state.elapsedHours%24===0){state.aiSophistication+=0.05+state.illicitFunds/10000000; addLog(`Adversaries pivot toward ${least.typology.name}, the least protected channel.`,'info'); if(getDay()%9===0&&!state.mutations[least.typology.id]){state.mutations[least.typology.id]={name:'Adaptive layering variant', day:getDay()}; addIncident(`🧬 Mutation detected in ${least.typology.name}.`); toast(`Mutation detected: ${least.typology.name}`,'critical');} if(getDay()%11===0&&!state.pressureAuctions.some(a=>a.target===least.typology.id&&a.remainingHours>0)){state.pressureAuctions.push({target:least.typology.id,remainingHours:24,requiredCoverage:45}); addLog(`Pressure auction opened against ${least.typology.name}.`,'warning');}}}
-function resolveTypology(t){const pressure=state.typologyPressure[t.id]; const controls=getActiveControlsFor(t.id); const detectionChance=clamp((t.detection+controls-state.aiSophistication*6)/100,0.05,0.88); const attackValue=pressure*t.impact*state.aiSophistication*220; if(Math.random()<detectionChance){const seizureRate=0.22+controls/500+getSeizureBoost(); const seized=attackValue*clamp(seizureRate,0.12,0.72); state.fraudMl=clamp(state.fraudMl-0.45-controls/70,0,LEGACY_LOSS_THRESHOLD); state.seizedFunds+=seized; state.trust=clamp(state.trust+0.08,0,100); if(Math.random()<0.18){addLog(`Detected ${t.name}; seized ${formatMoney(seized)} and disrupted linked accounts.`,'success'); state.strStats.decisions.unshift({typology:t.name,timely:true,seizure:seized});}} else {state.fraudMl=clamp(state.fraudMl+pressure*t.impact*0.28,0,LEGACY_LOSS_THRESHOLD+30); state.illicitFunds+=attackValue; state.escapedFunds+=attackValue; state.legitimateRevenue=Math.max(0,state.legitimateRevenue-attackValue*0.09); state.trust=clamp(state.trust-pressure*0.04,0,100); if(Math.random()<0.16) addLog(`${t.name} scheme succeeded, adding ${formatMoney(attackValue)} to illicit flows.`,'warning');}}
-function processEconomics(){const appetiteBoost=1+(state.riskAppetite-55)/250; const revenueRate=820*(1-calculateRevenueDrag())*(state.trust/100)*appetiteBoost; const safe=Math.max(120,revenueRate); const payroll=state.employees.length*75; const upkeep=Object.values(state.controls).reduce((s,l)=>s+l*35,0); state.legitimateRevenue+=safe; state.budget+=safe*.18-payroll-upkeep; state.burnout=clamp(state.burnout+(calculateThreat()>30?0.35:0.12)-state.employees.length*0.05,0,100); state.complianceCulture=clamp(75-state.burnout*.35+(state.controls.kyc?5:0),0,100); if(state.budget<0) state.negativeBudgetDays += HOURS_PER_TICK/24; else state.negativeBudgetDays=0;}
-function updateDaily(){if(state.elapsedHours%24!==0)return; const snap={day:getDay(),legitimateRevenue:state.legitimateRevenue,budget:state.budget,fraudMl:state.fraudMl,trust:state.trust,regulatorRelationship:state.regulatorRelationship}; state.metricHistory.push(snap); state.metricHistory=state.metricHistory.slice(-120); state.typologyHistory.push({day:getDay(), fraudMl:state.fraudMl, trust:state.trust, budget:state.budget, pressures:{...state.typologyPressure}}); state.typologyHistory=state.typologyHistory.slice(-120); if(getDay()%5===0){state.peerBenchmark.fraudMl*=0.98+(seededValue(state.seed+getDay())%10)/100; state.peerBenchmark.trust*=0.98+(seededValue('t'+state.seed+getDay())%10)/100; state.peerBenchmark.regulator*=0.98+(seededValue('r'+state.seed+getDay())%10)/100;} if(state.dailyBriefings) dailyBriefing();}
-function dailyBriefing(){const prev=state.metricHistory.at(-2)||state.metricHistory.at(-1)||{}; const fraudDelta=state.fraudMl-(prev.fraudMl??state.fraudMl); const budgetDelta=state.budget-(prev.budget??state.budget); const arrow=fraudDelta>1?'▲':fraudDelta<-1?'▼':'→'; showModal(`<h2>Daily Briefing — Day ${getDay()}</h2><p>Fraud/ML change: <strong>${arrow} ${fraudDelta.toFixed(1)}</strong></p><p>Budget change: <strong>${formatMoney(budgetDelta)}</strong></p><p>Days remaining: <strong>${Math.max(0,WIN_DAY-getDay()+1)}</strong></p><label><input id="skip-briefings" type="checkbox" /> Skip all future briefings</label><div class="modal-actions"><button type="button" data-close-modal>Resume supervision</button></div>`,{resume:true}); setTimeout(()=>{$('#skip-briefings')?.addEventListener('change',e=>{state.dailyBriefings=!e.target.checked; saveSimulation(false);});},0);}
-function processCascade(){const red=typologies.filter(t=>riskFor(t)>70); if(red.length>=2&&!state.cascade){state.cascade={start:state.elapsedHours,expires:state.elapsedHours+72}; const names=red.slice(0,2).map(x=>x.name).join(' and '); const controls=red.slice(0,2).flatMap(t=>t.counteredBy).filter((v,i,a)=>a.indexOf(v)===i).slice(0,3).map(formatCounterName).join(', '); showModal(`<article class="ceo-letter"><p>${new Date().toISOString().slice(0,10)}</p><p><strong>To:</strong> Chief Executive Officer</p><p><strong>From:</strong> MLRO</p><h2>Dear CEO Letter — Cascade Failure</h2><p>${names} are both in the red zone. You have a 72-hour remediation window.</p><p>Recommended controls: ${controls}</p><div class="modal-actions"><button type="button" data-close-modal>Acknowledge — begin remediation</button></div></article>`,{resume:true}); addLog('Cascade failure Dear CEO letter issued.','critical');} if(state.cascade&&state.elapsedHours>=state.cascade.expires){if(red.length>=2&&!state.cascade.enforced){state.cascade.enforced=true; showModal(`<h2>Formal Enforcement Action</h2><p>Two or more red-zone typologies remained active after the remediation window. Regulator relationship penalty applied.</p><div class="modal-actions"><button type="button" data-close-modal>Acknowledge</button></div>`,{resume:true}); state.regulatorRelationship=clamp(state.regulatorRelationship-8,0,100); addLog('Formal Enforcement Action imposed after cascade remediation failure.','critical');}else{state.cascade=null;}}}
-function processRival(){state.rival.fraudMl=clamp(state.rival.fraudMl+calculateThreat()*0.01-(seededValue(state.seed+getDay())%3)*0.08,0,160); state.rival.trust=clamp(state.rival.trust-state.rival.fraudMl*0.003+(seededValue('rt'+getDay())%3)*0.04,0,100); state.rival.regulator=clamp(state.rival.regulator-state.rival.fraudMl*0.002,0,100); if(getDay()>=30&&!state.rival.eventTriggered&&state.rival.fraudMl<state.fraudMl&&state.rival.trust>state.trust&&state.rival.regulator>state.regulatorRelationship){state.rival.eventTriggered=true; state.regulatorRelationship=clamp(state.regulatorRelationship-5,0,100); addLog('Competitive Pressure: rival firm outperformed all supervisory benchmarks; regulator relationship reduced by 5.','warning');}}
-function checkEndConditions(){if(state.fraudMl>=LEGACY_LOSS_THRESHOLD) return endGame(false,`Fraud/ML exceeded ${LEGACY_LOSS_THRESHOLD}.`); if(state.trust<=15 && getDay()>20) return endGame(false,'Public trust collapsed below supervisory viability.'); if(state.budget<0 && state.negativeBudgetDays>=2) return endGame(false,'Institution became insolvent for two consecutive days.'); if((state.typologyPressure.pf||0)*state.aiSophistication*20>120 && state.correspondentActive) return endGame(false,'Proliferation financing risk overwhelmed correspondent controls.'); if(getDay()>WIN_DAY && state.fraudMl<45 && state.trust>=35 && state.regulatorRelationship>=25) return endGame(true,`Day ${WIN_DAY} reached with Fraud/ML contained.`);}
-function tick(){if(!state.running||state.ended)return; state.elapsedHours+=HOURS_PER_TICK; completeDeployments(); adaptAi(); processEconomics(); processCascade(); state.pressureAuctions.forEach(a=>a.remainingHours-=HOURS_PER_TICK); state.pressureAuctions=state.pressureAuctions.filter(a=>a.remainingHours>0); typologies.forEach(t=>{state.typologyPressure[t.id]+=t.growth*state.aiSophistication; resolveTypology(t);}); state.fraudMl=clamp(state.fraudMl-Object.values(state.controls).reduce((s,l)=>s+l,0)*0.025,0,LEGACY_LOSS_THRESHOLD+30); updateDaily(); processRival(); checkEndConditions(); render();}
-function endGame(won, reason){state.running=false; state.ended=true; state.won=won; clearInterval(loopId); loopId=null; document.body.dataset.endWon=String(won); addLog(won?`Victory: ${reason}`:`Crisis: ${reason}`, won?'success':'critical'); saveCareer(won); if(!won){showIncidentReport(reason); return;} showScorecard(won,reason);}
-function showIncidentReport(reason){const top=typologies.map(t=>({t,g:t.growth*state.typologyPressure[t.id],coverage:getActiveControlsFor(t.id)})).sort((a,b)=>b.g-a.g)[0]; const missing=countermeasures.filter(c=>c.targets.includes(top.t.id)&&!hasControl(c.id)).sort((a,b)=>b.effectiveness-a.effectiveness)[0]; const crossed=(state.typologyHistory.find(h=>h.fraudMl>=LEGACY_LOSS_THRESHOLD/2)||{}).day||'Not recorded'; showModal(`<h1>Incident Report</h1><p><strong>Loss reason:</strong> ${reason}</p><ul><li>Highest unchecked growth: ${top.t.name}</li><li>Missing high-impact control: ${missing?missing.title:'Refresh deployed controls'}</li><li>50% loss threshold first crossed: Day ${crossed}</li></ul><h3>What to do differently</h3><ol><li>Deploy ${missing?missing.title:'core controls'} before Day 10.</li><li>Keep Fraud/ML below risk appetite with daily refreshes.</li><li>Preserve regulator relationship through governance audits.</li></ol><div class="modal-actions"><button type="button" id="view-scorecard-button">View full scorecard</button></div>`,{full:true}); setTimeout(()=>$('#view-scorecard-button')?.addEventListener('click',()=>{hideModal(false); showScorecard(false,reason);}),0);}
-function pillarScores(){return {Prevent:clamp(50+Object.keys(state.controls).length*6-state.fraudMl*.15,0,100),Detect:clamp(45+(state.controls.fiu?18:0)+(state.controls.monitoring?12:0),0,100),Disrupt:clamp(35+state.seizedFunds/1000,0,100),Govern:clamp(state.regulatorRelationship+state.complianceCulture*.2,0,100)};} function grade(v){return v>85?'A':v>70?'B':v>55?'C':v>40?'D':'F';}
-function showScorecard(won,reason){const pillars=pillarScores(); const stars=Math.max(1,Math.round(Object.values(pillars).reduce((a,b)=>a+b,0)/80)); const metrics=`<table><tr><th>Metric</th><th>Final</th></tr><tr><td>Fraud/ML</td><td>${state.fraudMl.toFixed(1)}</td></tr><tr><td>Trust</td><td>${state.trust.toFixed(1)}</td></tr><tr><td>Budget</td><td>${formatMoney(state.budget)}</td></tr><tr><td>Seized</td><td>${formatMoney(state.seizedFunds)}</td></tr></table>`; showModal(`<section class="scorecard ${won?'won':'lost'}"><h1>${won?'WIN':'LOSS'}</h1><h2>${reason}</h2><p>Lesson: balance prevention, detection, disruption, and governance before pressure compounds.</p><p>Seed: <strong>${state.seed}</strong></p><div class="pillars-grid">${Object.entries(pillars).map(([k,v])=>`<div><strong>${k}: ${grade(v)}</strong><span class="grade-bar"><span style="width:${v}%"></span></span></div>`).join('')}</div><div class="stars">${'★'.repeat(stars)}${'☆'.repeat(5-stars)}</div>${metrics}<h3>MLRO commentary</h3><p>${won?'The programme stayed resilient under adaptive pressure.':'The causal chain shows risk signals were visible before failure.'}</p><h3>Regulator exit letter</h3><p>${regulatorExitLetter(won)}</p><div class="modal-actions"><button type="button" id="export-report-button">Export report</button><button type="button" id="share-button">Copy share text</button><button type="button" id="replay-seed-button">Replay with same seed</button><button type="button" id="play-again-button">Play Again</button></div></section>`,{full:true}); setTimeout(()=>{$('#export-report-button')?.addEventListener('click',exportReport); $('#share-button')?.addEventListener('click',()=>navigator.clipboard?.writeText(`AML Simulator ${won?'win':'loss'} Day ${getDay()} Seed ${state.seed}`)); $('#play-again-button')?.addEventListener('click',()=>{hideModal(false); resetSimulation();}); $('#replay-seed-button')?.addEventListener('click',()=>{const seed=state.seed; hideModal(false); resetSimulation(); $('#seed-input').value=seed; state.seed=seed;});},0);}
-function regulatorExitLetter(won){return won?'The supervisor notes adequate systems and controls, with continued attention to emerging typologies.':'The supervisor identifies material control weaknesses requiring board-owned remediation and independent validation.';}
-function deployCountermeasure(c){if(state.ended)return; if(c.requires&& !hasControl(c.requires)){addLog(`${c.title} requires ${formatCounterName(c.requires)} first.`,'warning'); render(); return;} if(c.requiresSeizedFunds){if(state.seizedFunds<1000){addLog('Not enough seized funds are available to reinvest.','warning'); render(); return;} const reinvested=Math.min(state.seizedFunds,6000); state.seizedFunds-=reinvested; state.deployments.push({id:c.id,remainingHours:c.deploymentHours,reinvested}); addLog(`Approved reinvestment of ${formatMoney(reinvested)} in legitimate revenue capacity.`,'success'); render(); return;} const level=state.controls[c.id]||0; const cost=c.cost*(1+level*.45); if(state.budget<cost){addLog(`${c.title} requires ${formatMoney(cost)}, but budget is ${formatMoney(state.budget)}.`,'warning'); render(); return;} state.budget-=cost; state.controlSpend+=cost; state.deployments.push({id:c.id,remainingHours:c.deploymentHours}); addLog(`Deployment started: ${c.title} (${c.deploymentHours} in-game hours).`,'info'); render();}
-function startSimulation(){if(state.ended) state=createInitialState(); setDuration($('#duration-select').value); state.seed=$('#seed-input').value||'aml-2026'; state.riskAppetite=Number($('#risk-appetite-slider').value); state.regulatorRelationship=clamp(62-(state.riskAppetite-55)*.4,20,90); state.running=true; addLog('Simulation clock started. Revenue, threats, and controls now update continuously.','info'); ensureLoop(); render();}
-function pauseSimulation(){if(state.ended)return; state.running=!state.running; addLog(state.running?'Simulation resumed.':'Simulation paused for strategic review.','info'); ensureLoop(); render();}
-function resetSimulation(){clearInterval(loopId); loopId=null; state=createInitialState(); delete document.body.dataset.endWon; localStorage.removeItem(SAVE_KEY); render();}
-function saveSimulation(log=true){localStorage.setItem(SAVE_KEY,JSON.stringify(state)); if(log) addLog('Game state saved locally.','success'); render();}
-function migrate(raw){return {...createInitialState(),...JSON.parse(raw),running:false};}
-function loadSimulation(){const raw=localStorage.getItem(SAVE_KEY)||localStorage.getItem(LEGACY_SAVE_KEY); if(!raw){addLog('No saved game found.','warning'); render(); return;} state=migrate(raw); setDuration(state.durationDays||45); clearInterval(loopId); loopId=null; addLog('Saved game loaded and paused.','success'); render();}
-function renderMetrics(){elements.metricsGrid.innerHTML=''; metricDefinitions.forEach(([key,label,help])=>{const clone=elements.metricTemplate.content.cloneNode(true); clone.querySelector('.metric-label').textContent=label; clone.querySelector('.metric-value').textContent=key.includes('Revenue')||key.includes('Funds')||key==='budget'?formatMoney(state[key]):formatNumber(state[key]); clone.querySelector('.metric-help').textContent=help; const vals=state.metricHistory.slice(-10).map(x=>x[key]).filter(v=>v!==undefined); clone.querySelector('.sparkline').innerHTML=spark(vals); elements.metricsGrid.appendChild(clone);});}
-function spark(vals){if(vals.length<2)return '<polyline points="0,12 40,12" />'; const min=Math.min(...vals), max=Math.max(...vals), span=max-min||1; return `<polyline points="${vals.map((v,i)=>`${i*(40/(vals.length-1))},${16-((v-min)/span)*14-1}`).join(' ')}" />`;}
-function riskFor(t){return clamp(state.typologyPressure[t.id]*state.aiSophistication*7-getActiveControlsFor(t.id)*.5,0,100);} function sortedTypologies(){return [...typologies].sort((a,b)=>{const vals={risk:t=>riskFor(t),pressure:t=>state.typologyPressure[t.id],detection:t=>t.detection,coverage:t=>getActiveControlsFor(t.id),ai:t=>(state.adversaryProfile?.focus===t.id?1:0)}; return vals[heatSort](b)-vals[heatSort](a);});}
-function renderTypologies(){const sort=$('#heatmap-sort'); sort.innerHTML=['risk','pressure','detection','coverage','ai'].map(k=>`<button type="button" data-sort="${k}" class="${heatSort===k?'active':''}">${k}</button>`).join(''); sort.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{heatSort=b.dataset.sort; renderTypologies();})); elements.typologyList.innerHTML=''; sortedTypologies().forEach(t=>{const risk=riskFor(t), protection=getActiveControlsFor(t.id), mut=state.mutations[t.id]; const row=document.createElement('button'); row.type='button'; row.className=`typology-card ${state.adversaryProfile?.focus===t.id?'focus':''}`; row.innerHTML=`<div class="card-header"><h3>${t.name} ${mut?'<span class="badge blink">MUTATED</span>':''}</h3><span class="risk-badge ${risk>65?'danger':risk>35?'warning':'good'}">${Math.round(risk)} risk</span></div><p>${t.description}</p><div class="bar"><span style="width:${risk}%"></span></div><dl><div><dt>AI pressure</dt><dd>${state.typologyPressure[t.id].toFixed(1)}</dd></div><div><dt>Control coverage</dt><dd>${Math.round(protection)}%</dd></div><div><dt>Best counters</dt><dd>${t.counteredBy.map(formatCounterName).join(', ')}</dd></div></dl>`; row.addEventListener('click',()=>openTypologySlideout(t)); elements.typologyList.appendChild(row);}); const auction=state.pressureAuctions[0]; $('#auction-countdown').classList.toggle('hidden',!auction); if(auction){const at=typologies.find(t=>t.id===auction.target); const cov=getActiveControlsFor(auction.target); $('#auction-countdown').classList.toggle('critical',auction.remainingHours<=6); $('#auction-countdown').textContent=`Pressure auction: ${at.name} · ${Math.max(0,auction.remainingHours)}h remaining · coverage ${Math.round(cov)}/${auction.requiredCoverage}`;} const mut=Object.entries(state.mutations)[0]; $('#mutation-banner').classList.toggle('hidden',!mut); if(mut){const t=typologies.find(x=>x.id===mut[0]); $('#mutation-banner').textContent=`🧬 ${mut[1].name}: ${t.name}. Counters: ${t.counteredBy.map(formatCounterName).join(', ')}`;}}
-function renderCountermeasures(){elements.countermeasureList.innerHTML=''; countermeasures.forEach((c,i)=>{const level=state.controls[c.id]||0, cost=c.requiresSeizedFunds?0:c.cost*(1+level*.45), eff=getControlEfficiency(c); const clone=elements.countermeasureTemplate.content.cloneNode(true), btn=clone.querySelector('button'); clone.querySelector('.countermeasure-title').textContent=`${i+1}. ${c.title}`; clone.querySelector('.countermeasure-detail').textContent=`${c.type}: ${c.detail}`; clone.querySelector('.countermeasure-meta').textContent=c.requiresSeizedFunds?`Uses seized funds · ${c.deploymentHours}h deployment`:`${formatMoney(cost)} · ${c.deploymentHours}h deployment · Level ${level}${c.requires?` · Requires ${formatCounterName(c.requires)}`:''}`; clone.querySelector('.freshness-bar span').style.width=`${eff}%`; clone.querySelector('.freshness-bar').classList.add(eff>90?'fresh':eff>75?'warn':'stale'); clone.querySelector('.refresh-label').textContent=eff<80?`⟳ Refresh recommended · ${formatMoney(cost)}`:''; if(eff<70) btn.classList.add('refresh-hot'); btn.disabled=state.ended||(!c.requiresSeizedFunds&&state.budget<cost)||(c.requires&&!hasControl(c.requires)); btn.addEventListener('click',()=>deployCountermeasure(c)); elements.countermeasureList.appendChild(clone);}); renderPortfolio(); renderTechTree(); renderStaff();}
-function renderPortfolio(){const zero=typologies.filter(t=>getActiveControlsFor(t.id)<=0).length; const score=clamp((Object.keys(state.controls).length*8+state.employees.length*5+state.seizedFunds/1000)/(WIN_DAY/45),0,100); $('#portfolio-summary').innerHTML=`<h2>Control Portfolio</h2><p>Deployed: ${Object.keys(state.controls).length}/${countermeasures.length}</p><p class="${zero?'danger-text':''}">Typologies with zero coverage: ${zero}</p><p>Control spend: ${formatMoney(state.controlSpend)}</p><p>Upkeep/day: ${formatMoney(Object.values(state.controls).reduce((s,l)=>s+l*420,0))}</p><strong>AML Programme Score: ${Math.round(score)}/100</strong>`;}
-function renderTechTree(){const tech=['monitoring','aiAnomaly','federatedIntel','predictiveRisk']; $('#tech-tree').innerHTML=`<h2>Technology dependency graph</h2><svg viewBox="0 0 760 150" class="tech-svg">${tech.slice(0,-1).map((id,i)=>`<line x1="${120+i*180}" y1="75" x2="${250+i*180}" y2="75"/>`).join('')}${tech.map((id,i)=>{const c=countermeasures.find(x=>x.id===id), locked=c.requires&&!hasControl(c.requires), deploying=state.deployments.some(d=>d.id===id); return `<g data-tech="${id}" class="node ${hasControl(id)?'deployed':deploying?'deploying':locked?'locked':'deployable'}"><circle cx="${80+i*180}" cy="75" r="42"/><text x="${80+i*180}" y="80">${c.title.split(' ')[0]}</text></g>`;}).join('')}</svg>`; $('#tech-tree').querySelectorAll('[data-tech]').forEach(n=>n.addEventListener('click',()=>deployCountermeasure(countermeasures.find(c=>c.id===n.dataset.tech))));}
-function renderStaff(){const risk=state.burnout>75?'Critical':state.burnout>60?'High':state.burnout>35?'Moderate':'Low'; $('#burnout-panel').innerHTML=`<h2>Morale & Burnout</h2><svg class="radial" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30"/><path d="M40 10 A30 30 0 ${state.burnout>50?1:0} 1 ${40+30*Math.sin(state.burnout/100*6.28)} ${40-30*Math.cos(state.burnout/100*6.28)}"/></svg><p>Burnout: ${Math.round(state.burnout)}% · Risk: ${risk}</p><p>Backlog days: ${(calculateThreat()/20).toFixed(1)}</p><p>Culture score: ${Math.round(state.complianceCulture)}</p>`; $('#employee-list').innerHTML=employees.map(e=>`<button type="button" class="mini-panel employee-card ${state.burnout>60?'burnout':''}" data-role="${e.role}"><strong>Hire ${e.role}</strong><span>${formatMoney(e.cost)}/day equivalent capacity</span></button>`).join(''); $('#employee-list').querySelectorAll('[data-role]').forEach(b=>b.addEventListener('click',()=>{const e=employees.find(x=>x.role===b.dataset.role); if(state.budget<e.cost)return addLog('Insufficient budget to hire staff.','warning'); state.budget-=e.cost; state.employees.push(e); state.burnout=clamp(state.burnout-8,0,100); addLog(`Hired ${e.role}.`,'success'); render();}));}
-function renderBrief(){const least=typologies.map(t=>({t,protection:getActiveControlsFor(t.id),pressure:state.typologyPressure[t.id]})).sort((a,b)=>b.pressure*state.aiSophistication-b.protection-(a.pressure*state.aiSophistication-a.protection))[0]; elements.intelligenceBrief.innerHTML=`<h2>Intelligence brief</h2><p><strong>AI adaptation:</strong> sophistication <strong>${state.aiSophistication.toFixed(2)}x</strong>.</p><p><strong>Priority risk:</strong> ${least.t.name}. Deploy ${least.t.counteredBy.map(formatCounterName).join(', ')}.</p><div class="stage-flow"><span>Placement</span><span>Layering</span><span>Integration</span></div><p class="training-note">Effective AML programs combine prevention, detection, disruption, and governance.</p>`; $('#regulatory-banner').innerHTML=`<strong>Regulatory posture:</strong> ${tier()} · Relationship ${Math.round(state.regulatorRelationship)}/100`; renderTransactionFlow(); renderActors(); renderDarkweb(); renderHistory();}
-function tier(){return state.regulatorRelationship>=65?'Collaborative':state.regulatorRelationship>=45?'Supervised':state.regulatorRelationship>=25?'Watchlist':'Enforcement';}
-function renderPanels(){const alertTotal=Math.round(calculateThreat()*5); $('#mission-control').innerHTML=`<h2>Mission Control</h2><p>Risk appetite: ${state.riskAppetite}</p><div class="gauge"><span style="width:${cssPct(state.fraudMl,state.riskAppetite)}"></span></div><p>Customer book: digital retail, trade finance, correspondent banking.</p>`; $('#alert-queue-visual').innerHTML=`<h2>Alert Queue ${alertTotal>200?'<span class="badge blink">BACKLOG CRITICAL</span>':''}</h2><div class="segbar">${typologies.map(t=>{const val=Math.max(2,riskFor(t)); return `<span class="${val>60?'red':val>30?'amber':'green'}" style="width:${val}%" title="${t.name}: ${Math.round(val)} alerts"></span>`;}).join('')}</div><p>${alertTotal} current alerts</p>`; const lateRate=state.strStats.filed?state.strStats.late/state.strStats.filed*100:0; $('#str-tracker').innerHTML=`<h2>STR/SAR Tracker</h2><p>Filed: ${state.strStats.filed} · Late: ${state.strStats.late} <span class="badge ${lateRate>50?'red':lateRate>20?'amber':'green'}">${Math.round(lateRate)}%</span></p><p>Pending clock: ${state.activeStr?Math.max(0,state.activeStr.deadline-state.elapsedHours)+'h':'None'}</p><ol>${state.strStats.decisions.slice(0,5).map(d=>`<li>${d.typology} — ${d.timely?'timely':'late'} — ${formatMoney(d.seizure)}</li>`).join('')||'<li>No filings yet.</li>'}</ol>`; $('#regulator-panel').innerHTML=`<h2>Regulator Trajectory</h2><strong class="tier">${tier()}</strong><div class="tierbar"><span></span><span></span><span></span><span></span></div><p>Downgrade risk: ${state.fraudMl>state.riskAppetite?'High':'Managed'}</p><ol>${state.log.filter(l=>/regulator|supervis|audit|enforcement/i.test(l)).slice(0,5).map(l=>`<li>${abbr(l)}</li>`).join('')||'<li>No recent regulator events.</li>'}</ol>`; $('#peer-benchmark-panel').innerHTML=`<h2>Peer Benchmark</h2>${compareRows([['Fraud/ML',state.fraudMl,state.peerBenchmark.fraudMl,true],['Trust',state.trust,state.peerBenchmark.trust,false],['Regulator',state.regulatorRelationship,state.peerBenchmark.regulator,false]])}`; const total=state.seizedFunds+state.escapedFunds, rec=total?state.seizedFunds/total*100:0; $('#seizure-tracker').innerHTML=`<h2>Seizure Tracker</h2><div class="splitbar"><span class="green" style="width:${rec}%"></span><span class="red" style="width:${100-rec}%"></span></div><p>Recovery rate: ${rec.toFixed(1)}% ${rec>60?'🏆 Exceptional recovery':''}</p>`; renderForecast(); renderWorld(); renderGovern(); renderCareer(); renderLearn(); renderCampaign();}
-function compareRows(rows){return `<table>${rows.map(([n,y,p,lower])=>{const good=lower?y<p:y>p; return `<tr><th>${n}</th><td class="${good?'good-text':'danger-text'}">You ${y.toFixed(1)}</td><td>Peer ${p.toFixed(1)}</td></tr>`;}).join('')}</table>`;}
-function renderForecast(){const income=Math.max(120,820*(1-calculateRevenueDrag())*(state.trust/100)), outgoing=state.employees.length*75+Object.values(state.controls).reduce((s,l)=>s+l*35,0), burn=outgoing-income*.18, runway=burn>0?state.budget/(burn*12):99; $('#burn-rate-panel').innerHTML=`<h2>Budget Burn Rate</h2><p>Income/tick ${formatMoney(income*.18)} · Outgoing/tick ${formatMoney(outgoing)}</p><p>Budget runway: ${runway>90?'90+':runway.toFixed(1)} days</p><div class="gauge ${runway<5?'red':runway<10?'amber':'green'}"><span style="width:${clamp(runway*5,5,100)}%"></span></div><svg class="linechart" viewBox="0 0 240 70">${sparkLarge(state.metricHistory.slice(-10).map(h=>h.budget))}</svg>`; $('#plan-panel').innerHTML='<h2>Plan Panel</h2><ol><li>Stabilise top typology.</li><li>Refresh decayed controls.</li><li>Maintain regulator relationship above 25.</li></ol>'; $('#calendar-preview').innerHTML=`<h2>Next 7 Days</h2>${[0,1,2,3,4,5,6].map(i=>`<span class="calendar-chip">Day ${getDay()+i}</span>`).join('')}`; $('#case-room').innerHTML=`<h2>Case Room</h2><p>${Math.round(calculateThreat()*2)} open alerts under triage.</p><button type="button" id="file-str-button">File STR/SAR now</button>`; $('#file-str-button')?.addEventListener('click',()=>{state.strStats.filed++; state.strStats.decisions.unshift({typology:'Manual escalation',timely:true,seizure:state.seizedFunds*.05}); addLog('STR/SAR filed and suspicious network escalated.','success'); render();}); $('#case-count-badge').textContent=Math.round(calculateThreat()*2);}
-function sparkLarge(vals){if(vals.length<2)return ''; const min=Math.min(...vals), max=Math.max(...vals), span=max-min||1; return `<polyline points="${vals.map((v,i)=>`${i*(240/(vals.length-1))},${68-((v-min)/span)*60}`).join(' ')}"/>`;}
-function renderTransactionFlow(){const escaped=state.escapedFunds, seized=state.seizedFunds, legit=state.legitimateRevenue; $('#transaction-flow-panel').innerHTML=`<h2>Transaction Flow</h2><svg viewBox="0 0 600 100" class="flow-svg"><rect x="20" y="20" width="${clamp(legit/1000,30,520)}" height="18" class="green"/><rect x="20" y="48" width="${clamp(escaped/2000,5,520)}" height="18" class="red"/><rect x="20" y="76" width="${clamp(seized/1000,5,520)}" height="18" class="blue"/></svg><p>Legitimate volume · Illicit escaped · Seized funds</p>`;}
-function renderActors(){ $('#actor-profiles').innerHTML=typologies.map(t=>`<article class="mini-panel"><h3>${t.name}</h3><p>${t.example}</p><p>PPP bulletin: monitor ${t.counteredBy.map(formatCounterName).join(', ')} indicators.</p></article>`).join(''); }
-function renderDarkweb(){ $('#darkweb-feed').innerHTML=typologies.map(t=>`<article><span class="redacted" data-real="${t.name}: deploy ${formatCounterName(t.counteredBy[0])} to disrupt current chatter.">████ market chatter references ${t.name.replace(/[A-Za-z]/g,'█')} ████</span> <button type="button" data-decrypt>DECRYPT</button></article>`).join(''); $('#darkweb-feed').querySelectorAll('[data-decrypt]').forEach(b=>b.addEventListener('click',()=>{if(!hasControl('cyberUnit')&&!hasControl('blockchainAnalytics')) return toast('Decrypt requires Cyber Unit or blockchain analytics.','warning'); const s=b.previousElementSibling; s.textContent=s.dataset.real;}));}
-function renderHistory(){ $('#history-chart').innerHTML=`<h2>History Chart</h2><svg viewBox="0 0 500 180" class="linechart">${linePath('fraudMl','red')}${linePath('trust','green')}${linePath('budget','blue',Math.max(...state.metricHistory.map(h=>h.budget),1))}</svg>`; $('#incident-feed').innerHTML=`<h2>Incident Feed</h2><ol>${state.incidents.slice(0,20).map(i=>`<li>${abbr(i)}</li>`).join('')||'<li>No incidents yet.</li>'}</ol>`; renderLog();}
-function linePath(key,klass,maxOverride){const vals=state.metricHistory.slice(-30).map(h=>h[key]); if(vals.length<2)return ''; const max=maxOverride||100; return `<polyline class="${klass}" points="${vals.map((v,i)=>`${i*(500/(vals.length-1))},${170-clamp(v/max,0,1)*150}`).join(' ')}"/>`;}
-function renderWorld(){ $('#world-map').innerHTML='<h2>Geopolitical Risk Map</h2><svg viewBox="0 0 700 250" class="world-svg"><rect x="40" y="80" width="130" height="80"/><rect x="250" y="60" width="120" height="90"/><rect x="430" y="90" width="170" height="70"/><circle cx="520" cy="125" r="22" class="hot"/></svg>'; $('#corridor-tracker').innerHTML='<h2>Corridor Tracker</h2><p>Gulf ⇄ Europe ⇄ US corridors under enhanced monitoring.</p>'; $('#correspondent-registry').innerHTML='<h2>Correspondent Bank Registry</h2><p>3 active correspondent relationships; PF overlay active.</p>'; const tally={accept:0,reject:0,rfi:0}; state.correspondentHistory.forEach(x=>tally[x.decision]=(tally[x.decision]||0)+1); $('#correspondent-history').innerHTML=`<h2>Due Diligence History</h2><p>Accepted: ${tally.accept||0} | Rejected: ${tally.reject||0} | Awaiting: ${tally.rfi||0}</p><ol>${state.correspondentHistory.map(x=>`<li>${x.bank}: ${x.decision} — ${x.outcome}</li>`).join('')||'<li>No correspondent decisions yet.</li>'}</ol>`;}
-function renderGovern(){ $('#governance-actions').innerHTML='<h2>Governance Actions</h2><button type="button" id="qa-audit">Run QA audit</button>'; $('#qa-audit')?.addEventListener('click',()=>{state.regulatorRelationship=clamp(state.regulatorRelationship+5,0,100); state.budget-=1200; addLog('QA audit completed; regulator relationship improved.','success'); render();}); $('#compliance-calendar').innerHTML=`<h2>Compliance Calendar</h2><div class="month-grid">${Array.from({length:35},(_,i)=>`<button type="button" class="day-cell ${i+1===getDay()?'today':''}">D${i+1}<span class="event grey">quiet</span></button>`).join('')}</div>`; $('#policy-library').innerHTML='<h2>Policy Library</h2><div class="panel-grid"><article class="mini-panel">KYC Standard</article><article class="mini-panel">STR Escalation SOP</article><article class="mini-panel">PF Screening Policy</article></div>'; $('#training-leaderboard').innerHTML='<h2>Training Leaderboard</h2><p>Local leaderboard retained in aml-training-leaderboard-v1.</p>'; $('#competitive-leaderboard').innerHTML=`<h2>Competitive Leaderboard</h2>${compareRows([['Fraud/ML',state.fraudMl,state.rival.fraudMl,true],['Trust',state.trust,state.rival.trust,false],['Regulator',state.regulatorRelationship,state.rival.regulator,false]])}`;}
-function getCareer(){return JSON.parse(localStorage.getItem(CAREER_KEY)||'{"games":[],"records":{}}');} function saveCareer(won){const c=getCareer(); c.games.push({won, fraudMl:state.fraudMl, seizedFunds:state.seizedFunds, strs:state.strStats.filed, firstControl:state.firstControl}); localStorage.setItem(CAREER_KEY,JSON.stringify(c));}
-function renderCareer(){const c=getCareer(), games=c.games||[], wins=games.filter(g=>g.won); const fav=Object.entries(games.reduce((a,g)=>{if(g.firstControl)a[g.firstControl]=(a[g.firstControl]||0)+1;return a;},{})).sort((a,b)=>b[1]-a[1])[0]?.[0]; $('#career-records').innerHTML=`<h2>Hall of Records</h2><p>All-time win rate: ${games.length?Math.round(wins.length/games.length*100):0}%</p><p>Best win Fraud/ML: ${wins.length?Math.min(...wins.map(g=>g.fraudMl)).toFixed(1):'—'}</p><p>Most STRs in one run: ${games.length?Math.max(...games.map(g=>g.strs||0)):0}</p><p>Highest seizure: ${games.length?formatMoney(Math.max(...games.map(g=>g.seizedFunds||0))):'$0'}</p><p>Favourite first control: ${fav?formatCounterName(fav):'—'}</p><button type="button" id="reset-career">Reset records</button>`; $('#reset-career')?.addEventListener('click',()=>{localStorage.removeItem(CAREER_KEY); renderCareer();});}
-function renderLearn(){const q=($('#learn-search')?.value||'').toLowerCase(); $('#learn-grid').innerHTML=typologies.filter(t=>(t.name+t.description+t.predicate).toLowerCase().includes(q)).map(t=>`<article class="mini-panel"><h3>${t.name}</h3><p>${t.description}</p><p><strong>Keywords:</strong> ${t.predicate}</p></article>`).join(''); $('#predicate-map').innerHTML=`<h2>Predicate Offence Map</h2><svg viewBox="0 0 700 220" class="predicate-svg">${typologies.map((t,i)=>`<circle cx="${90+i*135}" cy="90" r="42"/><text x="${90+i*135}" y="95">${t.id}</text><line x1="${90+i*135}" y1="132" x2="350" y2="190"/>`).join('')}<text x="300" y="205">Criminal proceeds</text></svg>`;}
-function renderCampaign(){const el=$('#campaign-progress'); if(state.mode!=='campaign'){el.classList.add('hidden'); return;} el.classList.remove('hidden'); const pct=clamp((100-state.fraudMl)/100*100,0,100); el.innerHTML=`Chapter 1 — Supervisory Resilience · Win condition: contain Fraud/ML < 45 <div class="gauge"><span style="width:${pct}%"></span></div>${pct>80&&!state.chapterComplete?'<strong class="chapter-complete">Chapter complete!</strong>':''}`; if(pct>80) state.chapterComplete=true;}
-function renderLog(){elements.operationsLog.innerHTML=''; state.log.forEach(entry=>{const li=document.createElement('li'); li.innerHTML=abbr(entry); elements.operationsLog.appendChild(li);});}
-function abbr(text){return String(text).replace(/\b(AML|CTF|CPF|KYC|EDD|STR|SAR|UBO|PEP|FATF|MLRO)\b/g,'<abbr tabindex="0" data-term="$1">$1</abbr>');}
-function renderChrome(){const day=getDay(), hour=getHour()%24, threat=calculateThreat(); elements.clockLabel.textContent=`Day ${day} of ${WIN_DAY} · ${String(hour).padStart(2,'0')}:00`; elements.statusLabel.textContent=state.ended?'Ended':state.running?'Live':'Paused'; elements.threatLabel.textContent=`AI pressure: ${threat>35?'High':threat>20?'Medium':'Low'}`; elements.budgetLabel.textContent=`Budget ${formatMoney(state.budget)}`; elements.startButton.disabled=state.running&&!state.ended; elements.pauseButton.textContent=state.running?'Pause':'Resume'; $('#advisor-button').disabled=state.advisorUsed||state.ended; $('#speed-status-dot').className=`status-dot ${state.ended?'ended':state.running?'running':'paused'}`; $('#effective-speed-label').textContent=`${(HOURS_PER_TICK/(TICK_MS/1000)*speedMultiplier).toFixed(1)}h/s`; $('#fraud-progress-text').textContent=`${Math.round(state.fraudMl)}/${LEGACY_LOSS_THRESHOLD}`; $('#fraud-progress-fill').style.width=cssPct(state.fraudMl,LEGACY_LOSS_THRESHOLD); $('#trust-progress-text').textContent=`${Math.round(state.trust)}/100`; $('#trust-progress-fill').style.width=cssPct(state.trust,100); $('#day-progress-text').textContent=`${day}/${WIN_DAY}`; $('#day-progress-fill').style.width=cssPct(day,WIN_DAY); $('.progress-item.fraud').classList.toggle('critical',state.fraudMl>LEGACY_LOSS_THRESHOLD*.75); $('.progress-item.trust').classList.toggle('critical',state.trust<20); $('#risk-appetite-banner').classList.toggle('hidden',state.fraudMl<=state.riskAppetite); renderWarnings();}
-function renderWarnings(){const warnings=[]; if(state.fraudMl>LEGACY_LOSS_THRESHOLD*.8) warnings.push(['⚠ FRAUD/ML CRITICAL',`${Math.round(state.fraudMl)}/${LEGACY_LOSS_THRESHOLD}. Deploy controls immediately.`,'arsenal','arsenal-controls']); if(state.trust<18&&getDay()>20) warnings.push(['⚠ TRUST COLLAPSE IMMINENT',`${Math.round(state.trust)}/15 threshold approaching.`,'govern','govern-actions']); if(state.negativeBudgetDays>=1.6) warnings.push(['⚠ INSOLVENCY RISK',`Budget negative for ${state.negativeBudgetDays.toFixed(1)} days.`,'command','command-forecast']); const pfRisk=(state.typologyPressure.pf||0)*state.aiSophistication*20; if(pfRisk>96&&state.correspondentActive) warnings.push(['⚠ PROLIFERATION FINANCING',`PF risk ${Math.round(pfRisk)}/120.`,'world','world-corridors']); if(tier()==='Enforcement'&&state.trust<15) warnings.push(['⚠ REGULATORY SHUTDOWN RISK','Trust too low during enforcement.','govern','govern-actions']); const el=$('#loss-warning-banner'); el.classList.toggle('hidden',!warnings.length); el.innerHTML=warnings.map(w=>`<button type="button" data-jump-tab="${w[2]}" data-jump-subtab="${w[3]}"><strong>${w[0]}</strong> — ${w[1]}</button>`).join(''); el.querySelectorAll('[data-jump-tab]').forEach(b=>b.addEventListener('click',()=>activateTab(b.dataset.jumpTab,b.dataset.jumpSubtab))); if(warnings.length) toast(warnings[0][0],'critical');}
-function render(){renderChrome(); renderMetrics(); renderTypologies(); renderCountermeasures(); renderBrief(); renderPanels(); renderSpeedDock(); activateTab(activeTab, sessionStorage.getItem(`aml-subtab-${activeTab}`), false); applyTranslations();}
-function renderSpeedDock(){const dock=$('#speed-dock'); dock.innerHTML=[0.25,0.5,1,2,4].map(v=>`<button type="button" class="${speedMultiplier===v?'active':''}" data-speed="${v}">${v}x</button>`).join('')+'<button type="button" data-pause>PAUSE</button>'; dock.querySelectorAll('[data-speed]').forEach(b=>b.addEventListener('click',()=>{speedMultiplier=Number(b.dataset.speed); localStorage.setItem(SPEED_KEY,String(speedMultiplier)); ensureLoop(); render();})); dock.querySelector('[data-pause]').addEventListener('click',pauseSimulation);}
-function activateTab(tab, subtab, remember=true){activeTab=tab||'command'; if(remember){sessionStorage.setItem('aml-active-tab',activeTab); if(subtab) sessionStorage.setItem(`aml-subtab-${activeTab}`,subtab);} $$('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===activeTab)); $$('[data-tab-panel]').forEach(p=>p.classList.toggle('active',p.dataset.tabPanel===activeTab)); const panel=$(`[data-tab-panel="${activeTab}"]`); if(panel){const first=panel.querySelector('[data-subtab]')?.dataset.subtab; const chosen=subtab||sessionStorage.getItem(`aml-subtab-${activeTab}`)||first; panel.querySelectorAll('[data-subtab]').forEach(b=>b.classList.toggle('active',b.dataset.subtab===chosen)); panel.querySelectorAll('[data-subtab-panel]').forEach(p=>p.classList.toggle('active',p.dataset.subtabPanel===chosen)); if(chosen) sessionStorage.setItem(`aml-subtab-${activeTab}`,chosen);}}
-function openTypologySlideout(t){const el=$('#typology-slideout'), controls=t.counteredBy.filter(hasControl).map(formatCounterName), missing=t.counteredBy.filter(id=>!hasControl(id)).map(formatCounterName); el.innerHTML=`<button type="button" class="slideout-close">✕</button><h2>${t.name}</h2><p>${t.description}</p><p><a href="https://www.fatf-gafi.org/" target="_blank" rel="noreferrer">FATF guidance</a></p><h3>Red flags</h3><ul><li>Unusual velocity</li><li>Opaque ownership</li><li>Cross-border layering</li></ul><p><strong>Example:</strong> ${t.example}</p><dl><div><dt>Base pressure</dt><dd>${t.basePressure}</dd></div><div><dt>Growth</dt><dd>${t.growth}</dd></div><div><dt>Coverage</dt><dd>${Math.round(getActiveControlsFor(t.id))}%</dd></div><div><dt>Net risk</dt><dd>${Math.round(riskFor(t))}</dd></div></dl><p>Active controls: ${controls.join(', ')||'None'}</p><p>Missing controls: ${missing.join(', ')||'None'}</p><p><strong>Recommended:</strong> Deploy ${missing[0]||'refresh existing controls'}.</p>`; el.classList.add('open'); el.setAttribute('aria-hidden','false'); $('.slideout-close').addEventListener('click',closeSlideout);}
-function closeSlideout(){const el=$('#typology-slideout'); el.classList.remove('open'); el.setAttribute('aria-hidden','true');}
-function exportState(){download(`aml-state-day${getDay()}-seed${state.seed}.json`,JSON.stringify(state,null,2),'application/json');}
-function importState(file){const r=new FileReader(); r.onload=()=>{try{const data=JSON.parse(r.result); if(!('elapsedHours'in data)||!('typologyPressure'in data)) throw new Error('Invalid state'); state={...createInitialState(),...data,running:false}; setDuration(state.durationDays||45); addLog('Imported challenge state loaded and paused.','success'); render();}catch(e){addLog('Import failed: invalid simulator state.','warning');}}; r.readAsText(file);}
-function exportReport(){const pillars=pillarScores(); const html=`<!doctype html><html><head><meta charset="utf-8"><title>MLRO Annual Report</title><style>body{font-family:Georgia,serif;color:#111;background:white;margin:40px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:8px}.cover{border-bottom:4px solid #111}.muted{color:#555}@media print{button{display:none}body{margin:16mm}}</style></head><body><section class="cover"><h1>MLRO Annual Report</h1><p>${state.seed} · ${state.durationDays} days · ${new Date().toISOString().slice(0,10)}</p></section><h2>Executive Summary</h2><p>Company: ${$('#scenario-select').value==='custom'?'Custom institution':scenarios[$('#scenario-select').value]?.company}. Jurisdiction: ${scenarios[$('#scenario-select').value]?.jurisdiction||'Custom'}. Outcome: ${state.won?'Win':'Loss'}.</p><h2>AML Pillars</h2><table>${Object.entries(pillars).map(([k,v])=>`<tr><th>${k}</th><td>${grade(v)}</td><td>${Math.round(v)}/100</td></tr>`).join('')}</table><h2>Controls Deployed</h2><table><tr><th>Name</th><th>Cost</th><th>Deployment day</th><th>Efficiency</th></tr>${Object.keys(state.controls).map(id=>{const c=countermeasures.find(x=>x.id===id); return `<tr><td>${c.title}</td><td>${formatMoney(c.cost)}</td><td>${state.controlDeployDays[id]}</td><td>${Math.round(getControlEfficiency(c))}%</td></tr>`;}).join('')}</table><h2>Staff Roster</h2><p>${state.employees.map(e=>e.role).join(', ')||'No staff hires'} · Burnout impact ${Math.round(state.burnout)}%.</p><h2>Key Events</h2><ol>${state.log.slice(0,30).map(l=>`<li>${l}</li>`).join('')}</ol><h2>STR/SAR Filing Record</h2><p>Filed ${state.strStats.filed}, late ${state.strStats.late}.</p><h2>Regulatory Exit Letter</h2><p>${regulatorExitLetter(state.won)}</p><h2>MLRO Commentary</h2><p>${state.won?'Programme maturity was sufficient for the cycle.':'Lessons indicate earlier escalation and stronger controls were needed.'}</p><h2>Lessons Learned</h2><ul><li>Invest before risk compounds.</li><li>Track STR timeliness daily.</li><li>Use regulator audits proactively.</li></ul></body></html>`; $('#report-template').innerHTML=html; download(`mlro-annual-report-day${getDay()}-seed${state.seed}.html`,html,'text/html');}
-function download(name,content,type){const blob=new Blob([content],{type}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);}
-function showGlossary(term=''){showModal(`<h2>Glossary</h2><input id="glossary-search" class="filter-input" value="${term}" placeholder="Search terms"/><div id="glossary-grid" class="panel-grid"></div><div class="modal-actions"><button type="button" data-close-modal>Close</button></div>`); const renderG=()=>{const q=$('#glossary-search').value.toLowerCase(); $('#glossary-grid').innerHTML=Object.entries(glossary).filter(([k,v])=>(k+v).toLowerCase().includes(q)).map(([k,v])=>`<article class="mini-panel"><h3>${k}</h3><p>${v}</p></article>`).join('');}; setTimeout(()=>{$('#glossary-search').addEventListener('input',renderG); renderG();},0);}
-function advisor(){if(state.advisorUsed)return; state.advisorUsed=true; let rec='Run a QA audit to improve regulator confidence.', why='Regulator relationship is the most fragile governance pillar.'; const top=typologies.sort((a,b)=>riskFor(b)-riskFor(a))[0]; if(state.fraudMl>80){const c=countermeasures.filter(x=>x.targets.includes(top.id)&&!hasControl(x.id)).sort((a,b)=>b.effectiveness-a.effectiveness)[0]; if(c){rec=`Deploy ${c.title}`; why=`It targets ${top.name}, currently the highest net risk.`;}} else if(state.budget<8000){rec='Refresh the cheapest deployed control with highest target overlap.'; why='Budget is constrained; protect existing control efficiency.';} else if(state.burnout>60){rec='Hire an Investigator or QA Analyst.'; why='Burnout is reducing alert triage effectiveness.';} showModal(`<h2>Advisor Recommendation</h2><p><strong>${rec}</strong></p><p>${why}</p><p>Expected impact: reduced Fraud/ML trend or improved supervisory resilience.</p><div class="modal-actions"><button type="button" data-close-modal>Understood</button></div>`); render();}
-function showReplay(){activateTab('intel','intel-history'); const events=state.log.filter(l=>/Deployment|budget|FATF|loss|Victory|Crisis|operational/i.test(l)).slice(0,20); $('#history-chart').innerHTML=`<h2>Replay Analysis</h2><div class="replay-timeline"><svg viewBox="0 0 800 260" class="linechart">${linePath('fraudMl','red')}${linePath('trust','green')}${linePath('budget','blue',Math.max(...state.metricHistory.map(h=>h.budget),1))}</svg><ol>${events.map(e=>`<li>${abbr(e)}</li>`).join('')}</ol></div>`;}
-function showShortcuts(){showModal(`<h2>Keyboard Shortcuts</h2><table><tr><td>1–9</td><td>Deploy countermeasure</td></tr><tr><td>Space</td><td>Pause/resume</td></tr><tr><td>S / L / A</td><td>Save / Load / Advisor</td></tr><tr><td>C T I W G</td><td>Jump Command / Threats / Intel / World / Govern</td></tr><tr><td>?</td><td>Open this reference</td></tr></table><div class="modal-actions"><button type="button" data-close-modal>Close</button></div>`);}
-function showHotkey(k){toast(`Hotkey: ${k}`,'info');}
-function tutorial(){if(localStorage.getItem(TUTORIAL_KEY))return; const steps=['This is your Fraud/ML meter — keep it below 160.','Check the Threats tab to see which typology is highest risk.','Deploy a countermeasure from the Arsenal tab.','File an STR when the reporting clock appears.','Survive to Day 45 with Trust above 35 and Regulator above 25.']; let i=0; const overlay=$('#tutorial-overlay'); const draw=()=>{overlay.classList.remove('hidden'); overlay.innerHTML=`<div class="tutorial-card"><p>${steps[i]}</p><button type="button" id="tutorial-next">${i===steps.length-1?'Finish':'Next'}</button><button type="button" id="tutorial-skip">Skip tutorial</button></div>`; $('#tutorial-next').onclick=()=>{if(++i>=steps.length){localStorage.setItem(TUTORIAL_KEY,'1'); overlay.classList.add('hidden');}else draw();}; $('#tutorial-skip').onclick=()=>{localStorage.setItem(TUTORIAL_KEY,'1'); overlay.classList.add('hidden');};}; draw();}
-function applyTranslations(){const lang=localStorage.getItem(LANGUAGE_KEY)||'en', dict=translations[lang]||translations.en; $$('[data-i18n]').forEach(el=>{if(dict[el.dataset.i18n]) el.textContent=dict[el.dataset.i18n];});}
-function renderScenario(){const val=$('#scenario-select').value, card=$('#scenario-briefing-card'), sc=scenarios[val]; card.classList.toggle('hidden',!sc); if(sc){const t=typologies.find(x=>x.id===sc.watch); card.innerHTML=`<h3>${sc.name}</h3><p>${sc.jurisdiction} · ${sc.company} · ${sc.difficulty}</p><ul>${sc.notes.map(n=>`<li>${n}</li>`).join('')}</ul><p><strong>Key typology to watch:</strong> ${t.name}</p>`; $('#risk-appetite-slider').value=sc.watch==='pf'?50:55; $('#risk-appetite-output').textContent=$('#risk-appetite-slider').value;}}
-function handleKeyboard(e){if(e.target.matches('input,select,textarea'))return; const k=e.key.toLowerCase(); if(e.code==='Space'){e.preventDefault(); pauseSimulation(); showHotkey('Space');} if(e.key==='?') showShortcuts(); if(k==='s'){saveSimulation(); showHotkey('S');} if(k==='l'){loadSimulation(); showHotkey('L');} if(k==='a'){advisor(); showHotkey('A');} const jumps={c:'command',t:'threats',i:'intel',w:'world',g:'govern'}; if(jumps[k]){activateTab(jumps[k]); showHotkey(e.key.toUpperCase());} if(e.key==='Escape') closeSlideout(); const index=Number(e.key)-1; if(Number.isInteger(index)&&countermeasures[index]) deployCountermeasure(countermeasures[index]);}
-$$('[data-tab]').forEach(b=>b.addEventListener('click',()=>activateTab(b.dataset.tab))); $$('[data-subtab]').forEach(b=>b.addEventListener('click',()=>{const tab=b.closest('[data-tab-panel]').dataset.tabPanel; activateTab(tab,b.dataset.subtab);})); elements.startButton.addEventListener('click',startSimulation); elements.pauseButton.addEventListener('click',pauseSimulation); elements.saveButton.addEventListener('click',()=>saveSimulation()); elements.loadButton.addEventListener('click',loadSimulation); elements.restartButton.addEventListener('click',resetSimulation); $('#advisor-button').addEventListener('click',advisor); $('#analysis-replay-button').addEventListener('click',showReplay); $('#glossary-button').addEventListener('click',()=>showGlossary()); $('#export-state-button').addEventListener('click',exportState); $('#import-state-button').addEventListener('click',()=>$('#import-state-file').click()); $('#import-state-file').addEventListener('change',e=>e.target.files[0]&&importState(e.target.files[0])); $('#tick-interval-select').addEventListener('change',e=>{TICK_MS=Number(e.target.value); localStorage.setItem('aml-tick-interval',String(TICK_MS)); ensureLoop(); render();}); $('#duration-select').addEventListener('change',e=>setDuration(e.target.value)); $('#risk-appetite-slider').addEventListener('input',e=>{$('#risk-appetite-output').textContent=e.target.value; state.riskAppetite=Number(e.target.value); renderPanels();}); $('#scenario-select').addEventListener('change',renderScenario); $('#language-select').addEventListener('change',e=>{localStorage.setItem(LANGUAGE_KEY,e.target.value); applyTranslations();}); $('#learn-search').addEventListener('input',renderLearn); $('#restart-tutorial-button').addEventListener('click',()=>{localStorage.removeItem(TUTORIAL_KEY); tutorial();}); document.addEventListener('click',e=>{const ab=e.target.closest('abbr[data-term]'); if(ab) showGlossary(ab.dataset.term);}); document.addEventListener('keydown',handleKeyboard);
-$('#language-select').value=localStorage.getItem(LANGUAGE_KEY)||'en'; $('#tick-interval-select').value=String(TICK_MS); setDuration($('#duration-select').value); renderScenario(); render(); setTimeout(tutorial,400);
+const metricDefinitions = [
+  ['legitimateRevenue', 'Legitimate revenue', 'Productive economic output and source of operating budget.'],
+  ['budget', 'Budget', 'Available funds for controls, investigations, and R&D.'],
+  ['fraudMl', 'Fraud/ML', 'Current illicit activity pressure. Target: zero.'],
+  ['illicitFunds', 'Illicit funds', 'Total laundered value that strengthens adversary capability.'],
+  ['seizedFunds', 'Seized funds', 'Recovered illicit value available for reinvestment.'],
+  ['trust', 'Public trust', 'Confidence in the financial system and your institution.']
+];
+
+const initialState = {
+  running: false,
+  ended: false,
+  speed: Number(localStorage.getItem('aml-preferred-speed') || 0.5),
+  dailyBriefings: true,
+  negativeBudgetDays: 0,
+  escapedFunds: 0,
+  regulatorRelationship: 62,
+  filedStrs: 0,
+  lateStrs: 0,
+  activeStr: null,
+  employees: {},
+  elapsedHours: 0,
+  legitimateRevenue: 50000,
+  budget: 18000,
+  fraudMl: 10,
+  illicitFunds: 0,
+  seizedFunds: 0,
+  trust: 72,
+  aiSophistication: 1,
+  deployments: [],
+  controls: {},
+  typologyPressure: Object.fromEntries(typologies.map(typology => [typology.id, typology.basePressure])),
+  log: ['Welcome, Crime Stopper. Start the simulation to begin real-time monitoring.']
+};
+
+let state = structuredClone(initialState);
+let loopId = null;
+
+const elements = {
+  startButton: document.querySelector('#start-button'),
+  pauseButton: document.querySelector('#pause-button'),
+  saveButton: document.querySelector('#save-button'),
+  loadButton: document.querySelector('#load-button'),
+  restartButton: document.querySelector('#restart-button'),
+  clockLabel: document.querySelector('#clock-label'),
+  statusLabel: document.querySelector('#status-label'),
+  threatLabel: document.querySelector('#threat-label'),
+  budgetLabel: document.querySelector('#budget-label'),
+  metricsGrid: document.querySelector('#metrics-grid'),
+  typologyList: document.querySelector('#typology-list'),
+  countermeasureList: document.querySelector('#countermeasure-list'),
+  intelligenceBrief: document.querySelector('#intelligence-brief'),
+  operationsLog: document.querySelector('#operations-log'),
+  metricTemplate: document.querySelector('#metric-template'),
+  typologyTemplate: document.querySelector('#typology-template'),
+  countermeasureTemplate: document.querySelector('#countermeasure-template'),
+  modalRoot: document.querySelector('#modal-root'),
+  speedSelect: document.querySelector('#speed-select'),
+  learnPanel: document.querySelector('#learn-panel')
+};
+
+function formatMoney(value) {
+  return `$${Math.round(value).toLocaleString()}`;
+}
+
+function formatNumber(value) {
+  return Math.round(value).toLocaleString();
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getDay() {
+  return Math.floor(state.elapsedHours / 24) + 1;
+}
+
+function getHour() {
+  return 8 + (state.elapsedHours % 24);
+}
+
+function getActiveControlsFor(typologyId) {
+  const globalBoost = state.controls.rd ? state.controls.rd * 0.08 : 0;
+  return countermeasures.reduce((sum, countermeasure) => {
+    const level = state.controls[countermeasure.id] || 0;
+    const typology = typologies.find(item => item.id === typologyId);
+    if (!level || (!countermeasure.targets.includes(typologyId) && !typology?.counteredBy.includes(countermeasure.id))) return sum;
+    const levelMultiplier = 1 + (level - 1) * 0.35 + globalBoost;
+    return sum + countermeasure.effectiveness * levelMultiplier;
+  }, 0);
+}
+
+function addLog(message, toastType) {
+  const stamp = `Day ${getDay()} ${String(getHour()).padStart(2, '0')}:00`;
+  state.log.unshift(`${stamp} — ${message}`);
+  state.log = state.log.slice(0, 40);
+  if (toastType) toast(message, toastType);
+}
+
+function ensureLoop() {
+  clearInterval(loopId);
+  loopId = null;
+  if (state.running && !state.ended) loopId = setInterval(tick, TICK_MS / state.speed);
+}
+
+function toast(message, type = 'info') {
+  const stack = document.getElementById('toast-stack');
+  if (!stack) return;
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = message;
+  stack.prepend(el);
+  [...stack.children].slice(4).forEach(n => n.remove());
+  setTimeout(() => el.remove(), 5000);
+}
+
+function showModal(html) {
+  state.running = false;
+  ensureLoop();
+  elements.modalRoot.innerHTML = `<div class="modal-card">${html}</div>`;
+  elements.modalRoot.classList.remove('hidden');
+}
+
+function hideModal() {
+  elements.modalRoot.classList.add('hidden');
+  elements.modalRoot.classList.remove('full-screen-modal');
+  elements.modalRoot.innerHTML = '';
+}
+
+function getTypologyRisk(typology) {
+  if (!typology) return 0;
+  return clamp((state.typologyPressure[typology.id] || 0) * state.aiSophistication * 7 - getActiveControlsFor(typology.id) * 0.5, 0, 120);
+}
+
+function getRegulatorTier() {
+  if (state.regulatorRelationship >= 65) return 'Collaborative';
+  if (state.regulatorRelationship >= 45) return 'Supervised';
+  if (state.regulatorRelationship >= 25) return 'Watchlist';
+  return 'Enforcement';
+}
+
+function controlsCount() {
+  return Object.values(state.controls).reduce((sum, level) => sum + level, 0);
+}
+
+function isCorrespondentActive() {
+  return true;
+}
+
+function calculateThreat() {
+  return typologies.reduce((sum, typology) => sum + state.typologyPressure[typology.id], 0) * state.aiSophistication;
+}
+
+function calculateRevenueDrag() {
+  return countermeasures.reduce((drag, countermeasure) => {
+    const level = state.controls[countermeasure.id] || 0;
+    return drag + (countermeasure.revenueDrag || 0) * level;
+  }, 0);
+}
+
+function completeDeployments() {
+  state.deployments.forEach(deployment => {
+    deployment.remainingHours -= HOURS_PER_TICK;
+  });
+
+  const completed = state.deployments.filter(deployment => deployment.remainingHours <= 0);
+  state.deployments = state.deployments.filter(deployment => deployment.remainingHours > 0);
+
+  completed.forEach(deployment => {
+    const countermeasure = countermeasures.find(item => item.id === deployment.id);
+    if (!countermeasure) return;
+
+    if (countermeasure.id === 'reinvest') {
+      const amount = deployment.reinvested || 0;
+      state.legitimateRevenue += amount * 0.9;
+      state.budget += amount * 0.25;
+      addLog(`Reinvested ${formatMoney(amount)} in legitimate economic programs.`);
+      return;
+    }
+
+    state.controls[countermeasure.id] = (state.controls[countermeasure.id] || 0) + 1;
+    addLog(`${countermeasure.title} is operational at level ${state.controls[countermeasure.id]}.`);
+  });
+}
+
+function adaptAi() {
+  const leastProtected = typologies
+    .map(typology => ({ typology, protection: getActiveControlsFor(typology.id) }))
+    .sort((a, b) => a.protection - b.protection)[0];
+
+  if (!leastProtected) return;
+  state.typologyPressure[leastProtected.typology.id] += 0.15 * state.aiSophistication;
+
+  if (state.elapsedHours % 24 === 0) {
+    state.aiSophistication += 0.05 + state.illicitFunds / 10000000;
+    addLog(`Adversaries pivot toward ${leastProtected.typology.name}, the least protected channel.`);
+  }
+}
+
+function resolveTypology(typology) {
+  const pressure = state.typologyPressure[typology.id];
+  const controls = getActiveControlsFor(typology.id);
+  const detectionChance = clamp((typology.detection + controls - state.aiSophistication * 6) / 100, 0.05, 0.88);
+  const attackValue = pressure * typology.impact * state.aiSophistication * 220;
+
+  if (Math.random() < detectionChance) {
+    const seizureRate = 0.22 + controls / 500 + getSeizureBoost();
+    const seized = attackValue * clamp(seizureRate, 0.12, 0.72);
+    state.fraudMl = clamp(state.fraudMl - 0.45 - controls / 70, 0, LOSS_FRAUD_THRESHOLD);
+    state.seizedFunds += seized;
+    state.trust = clamp(state.trust + 0.08, 0, 100);
+
+    if (Math.random() < 0.18) {
+      addLog(`Detected ${typology.name}; seized ${formatMoney(seized)} and disrupted linked accounts.`);
+    }
+  } else {
+    state.fraudMl = clamp(state.fraudMl + pressure * typology.impact * 0.28, 0, 150);
+    state.illicitFunds += attackValue;
+    state.escapedFunds += attackValue;
+    state.legitimateRevenue = Math.max(0, state.legitimateRevenue - attackValue * 0.09);
+    state.trust = clamp(state.trust - pressure * 0.04, 0, 100);
+
+    if (Math.random() < 0.16) {
+      addLog(`${typology.name} scheme succeeded, adding ${formatMoney(attackValue)} to illicit flows.`);
+    }
+  }
+}
+
+function getSeizureBoost() {
+  return countermeasures.reduce((boost, countermeasure) => {
+    const level = state.controls[countermeasure.id] || 0;
+    return boost + (countermeasure.seizureBoost || 0) * level;
+  }, 0);
+}
+
+
+function maybeTriggerStr() {
+  if (state.activeStr || state.ended || state.elapsedHours < 12 || !elements.modalRoot.classList.contains('hidden')) return;
+  if (state.fraudMl > 35 && Math.random() < 0.025) {
+    const top = typologies.map(t => ({ t, risk: getTypologyRisk(t) })).sort((a, b) => b.risk - a.risk)[0].t;
+    state.activeStr = { typologyId: top.id, dueHour: state.elapsedHours + 24 };
+    showStrModal(top);
+  }
+}
+
+function showStrModal(typology) {
+  showModal(`<h2>STR/SAR Filing Decision</h2><p>Suspicious activity linked to <strong>${typology.name}</strong> requires MLRO review.</p><label><input type="checkbox" class="str-check" /> Customer activity is unusual for expected profile</label><label><input type="checkbox" class="str-check" /> Source or destination appears suspicious</label><label><input type="checkbox" class="str-check" /> Escalation rationale is documented</label><div class="modal-actions"><button type="button" id="file-str-confirm" disabled>File STR/SAR</button><button type="button" id="defer-str">Defer</button></div>`);
+  const update = () => { const checks = [...document.querySelectorAll('.str-check')]; document.getElementById('file-str-confirm').disabled = !checks.every(c => c.checked); };
+  setTimeout(() => {
+    document.querySelectorAll('.str-check').forEach(c => c.addEventListener('change', update));
+    document.getElementById('file-str-confirm')?.addEventListener('click', () => fileStr(false));
+    document.getElementById('defer-str')?.addEventListener('click', () => { hideModal(); state.running = true; ensureLoop(); render(); });
+  }, 0);
+}
+
+function fileStr(late) {
+  state.filedStrs += 1;
+  if (late) state.lateStrs += 1;
+  state.trust = clamp(state.trust + 1.5, 0, 100);
+  state.regulatorRelationship = clamp(state.regulatorRelationship + (late ? -1 : 2), 0, 100);
+  addLog(`STR/SAR filed${late ? ' late' : ''}; regulator notified.`, late ? 'warning' : 'success');
+  state.activeStr = null;
+  hideModal();
+  state.running = true;
+  ensureLoop();
+  render();
+}
+
+function processStrClock() {
+  if (state.activeStr && state.elapsedHours >= state.activeStr.dueHour) fileStr(true);
+}
+
+function tick() {
+  if (!state.running || state.ended) return;
+
+  state.elapsedHours += HOURS_PER_TICK;
+  completeDeployments();
+  adaptAi();
+
+  const revenueRate = 820 * (1 - calculateRevenueDrag()) * (state.trust / 100);
+  const safeRevenueRate = Math.max(120, revenueRate);
+  state.legitimateRevenue += safeRevenueRate;
+  state.budget += safeRevenueRate * 0.18;
+  state.negativeBudgetDays = state.budget < 0 ? state.negativeBudgetDays + HOURS_PER_TICK / 24 : 0;
+  dailyBriefing();
+
+  typologies.forEach(typology => {
+    state.typologyPressure[typology.id] += typology.growth * state.aiSophistication;
+    resolveTypology(typology);
+  });
+  maybeTriggerStr();
+  processStrClock();
+
+  state.fraudMl = clamp(state.fraudMl - Object.values(state.controls).reduce((sum, level) => sum + level, 0) * 0.025, 0, 150);
+
+  if (state.fraudMl >= LOSS_FRAUD_THRESHOLD || state.trust <= 15) {
+    endGame(false);
+  } else if (getDay() > WIN_DAY && state.fraudMl < 55 && state.trust >= 35 && state.regulatorRelationship >= 25) {
+    endGame(true);
+  }
+
+  render();
+}
+
+function endGame(won) {
+  state.running = false;
+  state.ended = true;
+  clearInterval(loopId);
+  loopId = null;
+  addLog(won
+    ? `Victory: Day ${WIN_DAY} reached with fraud contained and public trust intact.`
+    : 'Crisis: Fraud/ML overwhelmed the economy and public trust collapsed.', won ? 'success' : 'critical');
+  showScorecard(won);
+}
+
+function showScorecard(won) {
+  document.body.dataset.endWon = String(won);
+  elements.modalRoot.classList.add('full-screen-modal');
+  const controls = Object.keys(state.controls).length;
+  const stars = won ? Math.min(5, Math.max(3, controls)) : Math.max(1, Math.min(3, controls));
+  showModal(`
+    <section class="scorecard-${won ? 'won' : 'lost'}">
+      <h2>${won ? '✅ Supervisory Cycle Survived' : '🚨 Supervisory Failure'}</h2>
+      <p>${won ? 'Fraud/ML remained contained through the cycle.' : 'A loss threshold was reached. Review the final metrics before replaying.'}</p>
+      <div class="score-stars">${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}</div>
+      <table class="score-table"><tr><th>Metric</th><th>Final</th></tr><tr><td>Fraud/ML</td><td>${Math.round(state.fraudMl)} / ${LEGACY_LOSS_THRESHOLD}</td></tr><tr><td>Trust</td><td>${Math.round(state.trust)} / 100</td></tr><tr><td>Budget</td><td>${formatMoney(state.budget)}</td></tr><tr><td>Seized funds</td><td>${formatMoney(state.seizedFunds)}</td></tr></table>
+      <div class="modal-actions"><button type="button" id="play-again-button">Play Again</button><button type="button" id="replay-seed-button" class="secondary">Replay with same seed</button></div>
+    </section>`);
+  setTimeout(() => {
+    document.getElementById('play-again-button')?.addEventListener('click', () => { hideModal(); resetSimulation(); });
+    document.getElementById('replay-seed-button')?.addEventListener('click', () => { const seed = state.seed || 'aml-2026'; hideModal(); resetSimulation(); document.getElementById('seed-input').value = seed; });
+  }, 0);
+}
+
+function deployCountermeasure(countermeasure) {
+  if (state.ended) return;
+
+  if (countermeasure.requiresSeizedFunds) {
+    if (state.seizedFunds < 1000) {
+      addLog('Not enough seized funds are available to reinvest.');
+      render();
+      return;
+    }
+    const reinvested = Math.min(state.seizedFunds, 6000);
+    state.seizedFunds -= reinvested;
+    state.deployments.push({ id: countermeasure.id, remainingHours: countermeasure.deploymentHours, reinvested });
+    addLog(`Approved reinvestment of ${formatMoney(reinvested)} in legitimate revenue capacity.`);
+    render();
+    return;
+  }
+
+  const currentLevel = state.controls[countermeasure.id] || 0;
+  const scaledCost = countermeasure.cost * (1 + currentLevel * 0.45);
+
+  if (state.budget < scaledCost) {
+    addLog(`${countermeasure.title} requires ${formatMoney(scaledCost)}, but the budget is only ${formatMoney(state.budget)}.`);
+    render();
+    return;
+  }
+
+  state.budget -= scaledCost;
+  state.deployments.push({ id: countermeasure.id, remainingHours: countermeasure.deploymentHours });
+  addLog(`Deployment started: ${countermeasure.title} (${countermeasure.deploymentHours} in-game hours).`);
+  render();
+}
+
+function startSimulation() {
+  if (state.ended) state = structuredClone(initialState);
+  state.seed = document.getElementById('seed-input')?.value || 'aml-2026';
+  state.running = true;
+  addLog('Simulation clock started. Revenue, threats, and controls now update continuously.', 'info');
+  const savedSpeed = localStorage.getItem('aml-preferred-speed');
+  if (savedSpeed) state.speed = Number(savedSpeed);
+  ensureLoop();
+  render();
+}
+
+function pauseSimulation() {
+  if (state.ended) return;
+  state.running = !state.running;
+  addLog(state.running ? 'Simulation resumed.' : 'Simulation paused for strategic review.');
+  ensureLoop();
+  render();
+}
+
+function resetSimulation() {
+  clearInterval(loopId);
+  loopId = null;
+  state = structuredClone(initialState);
+  document.body.removeAttribute('data-end-won');
+  localStorage.removeItem(SAVE_KEY);
+  render();
+}
+
+function saveSimulation() {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  addLog('Game state saved locally.');
+  render();
+}
+
+function loadSimulation() {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) {
+    addLog('No saved game found.');
+    render();
+    return;
+  }
+
+  state = { ...structuredClone(initialState), ...JSON.parse(raw), running: false };
+  clearInterval(loopId);
+  loopId = null;
+  addLog('Saved game loaded and paused.');
+  render();
+}
+
+function renderMetrics() {
+  elements.metricsGrid.innerHTML = '';
+  metricDefinitions.forEach(([key, label, help]) => {
+    const clone = elements.metricTemplate.content.cloneNode(true);
+    clone.querySelector('.metric-label').textContent = label;
+    clone.querySelector('.metric-value').textContent = key.includes('Revenue') || key.includes('Funds') || key === 'budget'
+      ? formatMoney(state[key])
+      : formatNumber(state[key]);
+    clone.querySelector('.metric-help').textContent = help;
+    elements.metricsGrid.appendChild(clone);
+  });
+}
+
+function renderTypologies() {
+  elements.typologyList.innerHTML = '';
+  typologies.forEach(typology => {
+    const pressure = state.typologyPressure[typology.id];
+    const protection = getActiveControlsFor(typology.id);
+    const risk = clamp(pressure * state.aiSophistication * 7 - protection * 0.5, 0, 100);
+    const clone = elements.typologyTemplate.content.cloneNode(true);
+    clone.querySelector('h3').textContent = typology.name;
+    clone.querySelector('.risk-badge').textContent = `${Math.round(risk)} risk`;
+    clone.querySelector('.risk-badge').className = `risk-badge ${risk > 65 ? 'danger' : risk > 35 ? 'warning' : 'good'}`;
+    clone.querySelector('.typology-description').textContent = typology.description;
+    clone.querySelector('.bar span').style.width = `${risk}%`;
+    clone.querySelector('dl').innerHTML = `
+      <div><dt>AI pressure</dt><dd>${pressure.toFixed(1)}</dd></div>
+      <div><dt>Control coverage</dt><dd>${Math.round(protection)}%</dd></div>
+      <div><dt>Best counters</dt><dd>${typology.counteredBy.map(formatCounterName).join(', ')}</dd></div>`;
+    elements.typologyList.appendChild(clone);
+  });
+}
+
+function formatCounterName(id) {
+  return countermeasures.find(countermeasure => countermeasure.id === id)?.title || id;
+}
+
+function renderCountermeasures() {
+  elements.countermeasureList.innerHTML = '';
+  countermeasures.forEach((countermeasure, index) => {
+    const level = state.controls[countermeasure.id] || 0;
+    const scaledCost = countermeasure.requiresSeizedFunds ? 0 : countermeasure.cost * (1 + level * 0.45);
+    const clone = elements.countermeasureTemplate.content.cloneNode(true);
+    const button = clone.querySelector('button');
+    clone.querySelector('.countermeasure-title').textContent = `${index + 1}. ${countermeasure.title}`;
+    clone.querySelector('.countermeasure-detail').textContent = `${countermeasure.type}: ${countermeasure.detail}`;
+    clone.querySelector('.countermeasure-meta').textContent = countermeasure.requiresSeizedFunds
+      ? `Uses seized funds · ${countermeasure.deploymentHours}h deployment`
+      : `${formatMoney(scaledCost)} · ${countermeasure.deploymentHours}h deployment · Level ${level}`;
+    button.disabled = state.ended || (!countermeasure.requiresSeizedFunds && state.budget < scaledCost);
+    button.addEventListener('click', () => deployCountermeasure(countermeasure));
+    elements.countermeasureList.appendChild(clone);
+  });
+}
+
+function renderBrief() {
+  const leastProtected = typologies
+    .map(typology => ({ typology, protection: getActiveControlsFor(typology.id), pressure: state.typologyPressure[typology.id] }))
+    .sort((a, b) => b.pressure * state.aiSophistication - b.protection - (a.pressure * state.aiSophistication - a.protection))[0];
+  const activeDeployments = state.deployments.length
+    ? `<ul>${state.deployments.map(deployment => {
+        const countermeasure = countermeasures.find(item => item.id === deployment.id);
+        return `<li>${countermeasure.title}: ${Math.max(0, deployment.remainingHours)}h remaining</li>`;
+      }).join('')}</ul>`
+    : '<p>No deployments are currently in progress.</p>';
+
+  elements.intelligenceBrief.innerHTML = `
+    <p><strong>AI adaptation:</strong> Criminal networks exploit the weakest typology coverage and grow more sophisticated each day. Current sophistication is <strong>${state.aiSophistication.toFixed(2)}x</strong>.</p>
+    <p><strong>Priority risk:</strong> ${leastProtected.typology.name}. Increase relevant controls or deploy a specialist task force before pressure converts into illicit funds.</p>
+    <p><strong>Deployments in progress:</strong></p>
+    ${activeDeployments}
+    <p class="training-note">Education note: effective AML programs combine prevention (KYC, monitoring), detection (analytics, investigations), disruption (SAR/STR and task forces), and feedback loops (R&D and governance).</p>`;
+}
+
+
+function dailyBriefing() {
+  if (!state.dailyBriefings || state.elapsedHours % 24 !== 0 || state.elapsedHours === 0) return;
+  state.running = false;
+  ensureLoop();
+  const top = typologies.map(t => ({ t, risk: getTypologyRisk(t) })).sort((a, b) => b.risk - a.risk).slice(0, 3);
+  const recommendation = top[0].t.counteredBy.map(formatCounterName).join(', ');
+  const budgetHealth = state.budget < 5000 ? '🔴 Critical' : state.budget < 14000 ? '🟡 Tight' : '🟢 Stable';
+  const fraudTrend = state.fraudMl > 80 ? '▲ High — act immediately' : state.fraudMl > 40 ? '→ Moderate — monitor' : '▼ Contained';
+  const daysLeft = Math.max(0, WIN_DAY - getDay());
+  const winTarget = state.fraudMl < 55 ? '✅ On track' : `❌ Need Fraud/ML below 55 (currently ${Math.round(state.fraudMl)})`;
+  showModal(`
+    <div class="briefing-card">
+      <h2>📋 Daily Briefing — Day ${getDay()} of ${WIN_DAY}</h2>
+      <div class="briefing-grid">
+        <div class="briefing-stat"><span>Days remaining</span><strong>${daysLeft}</strong></div>
+        <div class="briefing-stat"><span>Fraud/ML trend</span><strong>${fraudTrend}</strong></div>
+        <div class="briefing-stat"><span>Budget health</span><strong>${budgetHealth}</strong></div>
+        <div class="briefing-stat"><span>Win condition</span><strong>${winTarget}</strong></div>
+      </div>
+      <h3>Top 3 active threats today</h3>
+      <ol>${top.map(x => `<li><strong>${x.t.name}</strong> — risk score ${Math.round(x.risk)}</li>`).join('')}</ol>
+      <p><strong>Recommended action:</strong> reinforce <em>${top[0].t.name}</em> with ${recommendation}.</p>
+      <p><strong>Regulator posture:</strong> ${getRegulatorTier()} (${Math.round(state.regulatorRelationship)}/100)</p>
+      <div class="modal-actions"><button type="button" id="resume-briefing">▶ Resume supervision</button><button type="button" id="skip-briefings" class="secondary">Skip future briefings</button></div>
+    </div>`);
+  setTimeout(() => {
+    document.getElementById('resume-briefing')?.addEventListener('click', () => { hideModal(); state.running = true; ensureLoop(); render(); });
+    document.getElementById('skip-briefings')?.addEventListener('click', () => { state.dailyBriefings = false; hideModal(); state.running = true; ensureLoop(); render(); });
+  }, 0);
+}
+
+function renderProgressBars() {
+  const fraudPct = Math.min(100, (state.fraudMl / LEGACY_LOSS_THRESHOLD) * 100);
+  const trustPct = Math.min(100, state.trust);
+  const dayPct = Math.min(100, ((getDay() - 1) / WIN_DAY) * 100);
+  const fraudBar = document.getElementById('fraud-ml-bar');
+  const trustBar = document.getElementById('trust-bar');
+  const dayBar = document.getElementById('day-bar');
+  const fraudText = document.getElementById('fraud-ml-text');
+  const trustText = document.getElementById('trust-text');
+  const dayText = document.getElementById('day-text');
+  const fraudItem = document.getElementById('fraud-progress-item');
+  if (fraudBar) fraudBar.style.width = fraudPct + '%';
+  if (trustBar) trustBar.style.width = trustPct + '%';
+  if (dayBar) dayBar.style.width = dayPct + '%';
+  if (fraudText) fraudText.textContent = `${Math.round(state.fraudMl)} / ${LEGACY_LOSS_THRESHOLD}`;
+  if (trustText) trustText.textContent = `${Math.round(state.trust)} / 100`;
+  if (dayText) dayText.textContent = `${getDay()} / ${WIN_DAY}`;
+  if (fraudItem) fraudItem.classList.toggle('critical-pulse', state.fraudMl > LEGACY_LOSS_THRESHOLD * 0.75);
+}
+
+function renderLossWarnings() {
+  const banner = document.getElementById('loss-warning-banner');
+  if (!banner) return;
+  const warnings = [];
+  if (state.fraudMl > LEGACY_LOSS_THRESHOLD * 0.75) warnings.push(`⚠ FRAUD/ML CRITICAL: ${Math.round(state.fraudMl)} / ${LEGACY_LOSS_THRESHOLD} — Deploy controls now`);
+  if (state.trust < 20 && getDay() > 20) warnings.push(`⚠ TRUST COLLAPSE IMMINENT: ${Math.round(state.trust)} / 15 threshold`);
+  if (state.negativeBudgetDays > 2) warnings.push(`⚠ INSOLVENCY RISK: Budget negative ${state.negativeBudgetDays.toFixed(1)} days`);
+  const pfRisk = getTypologyRisk(typologies.find(t => t.id === 'proliferationFinancing'));
+  if (pfRisk > 96 && isCorrespondentActive()) warnings.push(`⚠ PF CATASTROPHE RISK: PF risk ${Math.round(pfRisk)} / 120`);
+  banner.classList.toggle('hidden', warnings.length === 0);
+  banner.textContent = warnings.join('  ·  ');
+}
+
+function renderAlertQueue() {
+  const el = document.getElementById('alert-queue-panel');
+  if (!el) return;
+  const pressure = calculateThreat();
+  const analysts = Object.values(state.employees).reduce((sum, e) => sum + (e.count || 0), 0) + 1;
+  const coverage = Math.max(1, controlsCount() * 10 + analysts * 8);
+  const queueTotal = Math.round((pressure * 4) / (analysts + coverage / 30));
+  const criticalClass = queueTotal > 150 ? 'danger' : queueTotal > 50 ? 'warning' : '';
+  el.innerHTML = `<p>Current queue: <strong class="${criticalClass}">${queueTotal} alerts</strong></p><p>Analysts: ${analysts} · Coverage index: ${Math.round(coverage)}</p><div class="alert-bars">${typologies.map(t => { const risk = getTypologyRisk(t); const pct = Math.min(100, risk); const cls = risk > 65 ? 'danger-fill' : risk > 35 ? 'warning-fill' : 'good-fill'; return `<div class="alert-row"><span>${t.short || t.name}</span><div><i class="${cls}" style="width:${pct}%"></i></div><b>${Math.round(risk)}</b></div>`; }).join('')}</div>${queueTotal > 150 ? '<p class="danger">⚠ BACKLOG CRITICAL — hire staff or deploy controls</p>' : ''}`;
+}
+
+function renderRegulatorTrajectory() {
+  const el = document.getElementById('regulator-trajectory');
+  if (!el) return;
+  const tier = getRegulatorTier();
+  const downgradeRisk = state.fraudMl > 80 ? 'High' : state.fraudMl > 40 ? 'Moderate' : 'Low';
+  el.innerHTML = `<p>Current posture: <strong>${tier}</strong> (${Math.round(state.regulatorRelationship)}/100)</p><p>Downgrade risk: <strong>${downgradeRisk}</strong></p><div class="tier-steps">${['Enforcement','Watchlist','Supervised','Collaborative'].map(t => `<span class="${t === tier ? 'active' : ''}">${t}</span>`).join('')}</div><p class="muted">Collaborative ≥ 65 · Supervised 45–64 · Watchlist 25–44 · Enforcement &lt; 25</p>`;
+}
+
+function renderStrTracker() {
+  const el = document.getElementById('str-tracker');
+  if (!el) return;
+  const lateRate = state.filedStrs > 0 ? Math.round((state.lateStrs / state.filedStrs) * 100) : 0;
+  const clockRemaining = state.activeStr ? Math.max(0, state.activeStr.dueHour - state.elapsedHours) : null;
+  el.innerHTML = `<p>Filed: <strong>${state.filedStrs}</strong> · Late: <strong>${state.lateStrs}</strong> · Late rate: <strong>${lateRate}%</strong></p>${clockRemaining !== null ? `<p class="warning">⏱ STR CLOCK ACTIVE — ${clockRemaining}h remaining</p>` : '<p class="muted">No active STR clock.</p>'}`;
+}
+
+function renderSeizureSummary() {
+  const el = document.getElementById('seizure-summary');
+  if (!el) return;
+  const total = state.seizedFunds + state.escapedFunds;
+  const rate = total > 0 ? Math.round((state.seizedFunds / total) * 100) : 0;
+  el.innerHTML = `<p>Seized: <strong class="good-text">${formatMoney(state.seizedFunds)}</strong></p><p>Escaped: <strong class="danger-text">${formatMoney(state.escapedFunds)}</strong></p><p>Recovery rate: <strong>${rate}%</strong>${rate > 60 ? ' 🏆' : ''}</p><div class="split-bar"><span style="width:${rate}%"></span><i style="width:${100-rate}%"></i></div>`;
+}
+
+function renderSupportingPanels() {
+  const riskProfile = document.getElementById('risk-profile');
+  if (riskProfile) riskProfile.innerHTML = `<p>Fraud/ML ${Math.round(state.fraudMl)} / ${LEGACY_LOSS_THRESHOLD}; AI sophistication ${state.aiSophistication.toFixed(2)}x.</p>`;
+  document.getElementById('risk-appetite').innerHTML = '<p>Risk appetite: keep Fraud/ML below 55 by cycle end.</p>';
+  document.getElementById('customer-book').innerHTML = '<p>Customer book: retail, digital assets, trade, property, and correspondent activity.</p>';
+  document.getElementById('peer-benchmark').innerHTML = '<p>Peer benchmark: stable peers keep Fraud/ML below 45 and trust above 65.</p>';
+  document.getElementById('budget-forecast').innerHTML = `<p>Budget ${formatMoney(state.budget)}. Revenue drag ${(calculateRevenueDrag() * 100).toFixed(1)}%.</p>`;
+  document.getElementById('plan-panel').innerHTML = '<ol><li>Deploy controls for the top risk typology.</li><li>Preserve trust and budget.</li><li>Reinvest seized funds when available.</li></ol>';
+  document.getElementById('case-room').innerHTML = `<article class="case-card"><h3>Priority typology review</h3><p>${Math.round(calculateThreat() * 2)} alerts awaiting triage.</p><button type="button">Assign analyst</button></article>`;
+  document.getElementById('technology-panel').innerHTML = '<p>Technology upgrades are represented by transaction monitoring, analytics, cyber unit, and R&D controls.</p>';
+  document.getElementById('staff-panel').innerHTML = '<p>Staff capacity is abstracted into the FIU and specialist controls in this training build.</p>';
+  document.getElementById('regulatory-banner').innerHTML = `<p>Regulator posture: <strong>${getRegulatorTier()}</strong></p>`;
+  document.getElementById('money-flow').innerHTML = `<p>Illicit escaped ${formatMoney(state.escapedFunds)} · Seized ${formatMoney(state.seizedFunds)}</p>`;
+  document.getElementById('stage-flow').innerHTML = '<p>Placement → Layering → Integration: controls reduce pressure before integration succeeds.</p>';
+  document.getElementById('incident-feed').innerHTML = state.log.slice(0, 8).map(x => `<li>${x}</li>`).join('');
+  document.getElementById('actor-profiles').innerHTML = typologies.slice(0, 6).map(t => `<article class="learn-card"><h3>${t.name}</h3><p>${t.description}</p></article>`).join('');
+  document.getElementById('darkweb-feed').innerHTML = typologies.slice(0, 5).map(t => `<article class="learn-card"><p>████ chatter indicates ${t.name} pressure.</p></article>`).join('');
+  document.getElementById('history-chart').innerHTML = '<p>History chart begins after the simulation has run.</p>';
+  document.getElementById('predicate-map').innerHTML = '<p>Predicate offences link fraud, corruption, trafficking, tax evasion, sanctions, and terror financing to laundering typologies.</p>';
+  document.getElementById('predicate-map-learn').innerHTML = document.getElementById('predicate-map').innerHTML;
+  document.getElementById('world-map').innerHTML = '<p>Geopolitical risk: trade, correspondent, sanctions, and informal value transfer corridors.</p>';
+  document.getElementById('corridor-tracker').innerHTML = '<p>Corridors monitored: Gulf-Europe, US-Europe, cash courier routes, and informal value transfer networks.</p>';
+  document.getElementById('correspondent-registry').innerHTML = '<p>Correspondent registry active; proliferation financing warnings use this exposure.</p>';
+  document.getElementById('govern-actions').innerHTML = '<p>Board escalation, QA review, and policy refreshes support regulator confidence.</p>';
+  document.getElementById('compliance-calendar').innerHTML = `<p>Day ${getDay()} of ${WIN_DAY}; next daily briefing at 08:00.</p>`;
+  document.getElementById('policy-library').innerHTML = '<p>KYC, monitoring, STR escalation, sanctions/PF, and FIU policies.</p>';
+  document.getElementById('policy-library-full').innerHTML = document.getElementById('policy-library').innerHTML;
+  document.getElementById('leaderboard').innerHTML = '<p>Training leaderboard persists locally.</p>';
+  document.getElementById('competitive-board').innerHTML = '<p>Your institution is benchmarked against a stable peer profile.</p>';
+  document.getElementById('career-panel').innerHTML = '<p>Save completed runs to build career statistics.</p>';
+}
+
+function renderLearn() {
+  const query = (document.getElementById('learn-search-input')?.value || '').toLowerCase();
+  const filtered = query ? typologies.filter(t => (t.name + t.description + (t.short || '')).toLowerCase().includes(query)) : typologies;
+  elements.learnPanel.innerHTML = filtered.map(t => `<article class="learn-card"><h3>${t.name}</h3><p><strong>What it is:</strong> ${t.description}</p><p><strong>Best controls:</strong> ${t.counteredBy.map(formatCounterName).join(', ')}</p></article>`).join('') || '<p>No typologies match that search.</p>';
+}
+
+function renderSpeedDock() {
+  document.querySelectorAll('.speed-btn[data-speed]').forEach(btn => btn.classList.toggle('active', Number(btn.dataset.speed) === state.speed));
+  const pauseBtn = document.getElementById('dock-pause-btn');
+  if (pauseBtn) pauseBtn.textContent = state.running ? '⏸' : '▶';
+  if (elements.speedSelect) elements.speedSelect.value = String(state.speed);
+}
+
+function renderLog() {
+
+  elements.operationsLog.innerHTML = '';
+  state.log.forEach(entry => {
+    const item = document.createElement('li');
+    item.textContent = entry;
+    elements.operationsLog.appendChild(item);
+  });
+}
+
+function render() {
+  const day = getDay();
+  const hour = getHour() % 24;
+  const threat = calculateThreat();
+
+  elements.clockLabel.textContent = `Day ${day} of ${WIN_DAY} · ${String(hour).padStart(2, '0')}:00`;
+  elements.statusLabel.textContent = state.ended ? 'Ended' : state.running ? 'Live' : 'Paused';
+  elements.threatLabel.textContent = `AI pressure: ${threat > 35 ? 'High' : threat > 20 ? 'Medium' : 'Low'}`;
+  elements.budgetLabel.textContent = `Budget ${formatMoney(state.budget)}`;
+  elements.startButton.disabled = state.running && !state.ended;
+  elements.pauseButton.textContent = state.running ? 'Pause' : 'Resume';
+
+  renderProgressBars();
+  renderLossWarnings();
+  renderSpeedDock();
+  renderMetrics();
+  renderTypologies();
+  renderCountermeasures();
+  renderBrief();
+  renderAlertQueue();
+  renderRegulatorTrajectory();
+  renderStrTracker();
+  renderSeizureSummary();
+  renderSupportingPanels();
+  renderLearn();
+  renderLog();
+}
+
+function showShortcutsModal() {
+  showModal(`<h2>Keyboard Shortcuts</h2><table class="shortcut-table"><tr><td>Space / A</td><td>Pause / Analysis Mode</td></tr><tr><td>S / L</td><td>Save / Load</td></tr><tr><td>1–9</td><td>Deploy countermeasure</td></tr><tr><td>C/T/I/W/G</td><td>Jump tabs</td></tr><tr><td>?</td><td>This panel</td></tr></table><div class="modal-actions"><button type="button" onclick="hideModal()">Close</button></div>`);
+}
+
+function activateTab(tabName) {
+  document.querySelectorAll('.tab,.tab-panel').forEach(el => el.classList.remove('active'));
+  document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('active');
+  document.querySelector(`#tab-${tabName}`)?.classList.add('active');
+}
+
+function handleKeyboard(event) {
+  if (event.code === 'Space') {
+    event.preventDefault();
+    pauseSimulation();
+    return;
+  }
+
+  if (event.target.matches('input,select,textarea')) return;
+  if (event.key.toLowerCase() === 'a') { pauseSimulation(); return; }
+  if (event.key.toLowerCase() === 's') { saveSimulation(); return; }
+  if (event.key.toLowerCase() === 'l') { loadSimulation(); return; }
+  if (event.key === '?') { showShortcutsModal(); return; }
+  const tabJumps = { c: 'command', t: 'threats', i: 'intel', w: 'world', g: 'govern' };
+  const jumpTab = tabJumps[event.key.toLowerCase()];
+  if (jumpTab) { activateTab(jumpTab); return; }
+
+  const index = Number(event.key) - 1;
+  if (Number.isInteger(index) && countermeasures[index]) {
+    deployCountermeasure(countermeasures[index]);
+  }
+}
+
+elements.startButton.addEventListener('click', startSimulation);
+elements.pauseButton.addEventListener('click', pauseSimulation);
+elements.saveButton.addEventListener('click', saveSimulation);
+elements.loadButton.addEventListener('click', loadSimulation);
+elements.restartButton.addEventListener('click', resetSimulation);
+elements.speedSelect?.addEventListener('change', () => { state.speed = Number(elements.speedSelect.value); localStorage.setItem('aml-preferred-speed', String(state.speed)); ensureLoop(); renderSpeedDock(); });
+document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => activateTab(tab.dataset.tab)));
+document.querySelectorAll('.subtab').forEach(tab => tab.addEventListener('click', () => {
+  const container = tab.closest('.tab-panel');
+  container.querySelectorAll('.subtab,.subtab-panel').forEach(el => el.classList.remove('active'));
+  tab.classList.add('active');
+  container.querySelector(`#subtab-${tab.dataset.subtab}`)?.classList.add('active');
+}));
+document.querySelectorAll('.speed-btn[data-speed]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.speed = Number(btn.dataset.speed);
+    localStorage.setItem('aml-preferred-speed', String(state.speed));
+    if (elements.speedSelect) elements.speedSelect.value = String(state.speed);
+    ensureLoop();
+    renderSpeedDock();
+  });
+});
+document.getElementById('dock-pause-btn')?.addEventListener('click', pauseSimulation);
+document.getElementById('learn-search-input')?.addEventListener('input', renderLearn);
+document.addEventListener('keydown', handleKeyboard);
+render();
