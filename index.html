@@ -12,12 +12,17 @@
       <div>
         <p class="eyebrow">Real-time economic crime strategy simulator</p>
         <h1 id="game-title">Anti-Money Laundering Simulator</h1>
-        <p class="intro">
-          You are the Crime Stopper responsible for protecting a growing digital
-          economy. Revenue flows constantly, criminal networks adapt in real time,
-          and every countermeasure changes the balance between growth, trust, and
-          fraud/ML exposure.
-        </p>
+        <p class="intro">You are the Crime Stopper responsible for protecting a growing digital economy while criminal networks adapt in real time.</p>
+        <label class="setup-speed">Speed
+          <select id="speed-select">
+            <option value="0.25">0.25x</option>
+            <option value="0.5" selected>0.5x</option>
+            <option value="1">1x</option>
+            <option value="2">2x</option>
+            <option value="4">4x</option>
+          </select>
+        </label>
+        <label class="setup-speed">Seed <input id="seed-input" type="text" value="aml-2026" /></label>
       </div>
       <div class="hero-actions" aria-label="Simulation controls">
         <button id="start-button" type="button">Start simulation</button>
@@ -28,92 +33,70 @@
       </div>
     </section>
 
-    <section class="dashboard" aria-label="Economic dashboard">
-      <article class="panel score-panel">
-        <div class="panel-heading">
-          <h2>Economic command center</h2>
-          <span id="clock-label" class="pill">Day 1 · 08:00</span>
-        </div>
-        <div id="metrics-grid" class="metrics-grid"></div>
-      </article>
-
-      <article class="panel objective-panel">
-        <h2>Mission</h2>
-        <p>
-          Keep <strong>Fraud/ML</strong> as close to zero as possible while sustaining
-          legitimate revenue. Win by reaching Day 30 with a stable economy and
-          suppressed illicit activity; lose if fraud overwhelms public trust.
-        </p>
-        <ul class="mission-list">
-          <li><kbd>1</kbd>–<kbd>9</kbd>: deploy a countermeasure</li>
-          <li><kbd>Space</kbd>: pause or resume</li>
-          <li><kbd>S</kbd>: save · <kbd>L</kbd>: load</li>
-        </ul>
-      </article>
+    <section class="chrome-bar panel" aria-label="Economic dashboard">
+      <span id="clock-label" class="pill">Day 1 · 08:00</span>
+      <span id="status-label" class="pill">Ready</span>
+      <span id="budget-label" class="pill">Budget $0</span>
+      <span id="threat-label" class="pill warning">AI pressure: Low</span>
     </section>
 
-    <section class="layout-grid">
-      <article class="panel threat-panel">
-        <div class="panel-heading">
-          <h2>Active laundering typologies</h2>
-          <span id="threat-label" class="pill warning">AI pressure: Low</span>
-        </div>
-        <div id="typology-list" class="typology-list"></div>
-      </article>
+    <section id="progress-strip" class="progress-strip" aria-label="Win/loss indicators">
+      <div class="progress-item" id="fraud-progress-item"><label>Fraud/ML <span id="fraud-ml-text">10 / 160</span></label><div class="progress-track"><div id="fraud-ml-bar" class="progress-fill danger-fill"></div></div></div>
+      <div class="progress-item"><label>Trust <span id="trust-text">72 / 100</span></label><div class="progress-track"><div id="trust-bar" class="progress-fill good-fill"></div></div></div>
+      <div class="progress-item"><label>Day <span id="day-text">1 / 45</span></label><div class="progress-track"><div id="day-bar" class="progress-fill day-fill"></div></div></div>
+    </section>
+    <div id="loss-warning-banner" class="loss-warning-banner hidden" role="alert" aria-live="assertive"></div>
 
-      <article class="panel action-panel">
-        <div class="panel-heading">
-          <h2>Deploy countermeasures</h2>
-          <span id="budget-label" class="pill">Budget $0</span>
-        </div>
-        <div id="countermeasure-list" class="countermeasure-list"></div>
-      </article>
+    <section class="panel score-panel"><div id="metrics-grid" class="metrics-grid"></div></section>
+
+    <nav class="tabs panel" aria-label="Simulator sections">
+      <button class="tab active" data-tab="command" type="button">Command</button>
+      <button class="tab" data-tab="arsenal" type="button">Arsenal</button>
+      <button class="tab" data-tab="threats" type="button">Threats</button>
+      <button class="tab" data-tab="intel" type="button">Threat Intel</button>
+      <button class="tab" data-tab="world" type="button">World</button>
+      <button class="tab" data-tab="govern" type="button">Govern</button>
+      <button class="tab" data-tab="career" type="button">Career</button>
+      <button class="tab" data-tab="learn" type="button">Learn</button>
+    </nav>
+
+    <section id="tab-command" class="tab-panel active">
+      <nav class="subtabs" aria-label="Command sections"><button class="subtab active" data-subtab="command-overview" type="button">Overview</button><button class="subtab" data-subtab="command-cases" type="button">Case Room</button><button class="subtab" data-subtab="command-forecast" type="button">Forecast</button></nav>
+      <div id="subtab-command-overview" class="subtab-panel active panel"><div class="layout-grid"><article class="panel"><div class="panel-heading"><h2>Mission control</h2><span id="campaign-label" class="pill">Free play</span></div><div id="risk-profile" class="scene-body"></div><div id="risk-appetite" class="scene-body"></div><div id="customer-book" class="scene-body"></div><div id="peer-benchmark" class="scene-body"></div></article><article class="panel"><h2>Alert queue</h2><div id="alert-queue-panel" class="scene-body"></div><h2>Regulator trajectory</h2><div id="regulator-trajectory" class="scene-body"></div></article></div></div>
+      <div id="subtab-command-cases" class="subtab-panel panel"><div class="panel-heading"><h2>Case Room</h2><span class="pill">Active investigations</span></div><div id="case-room" class="case-room"></div></div>
+      <div id="subtab-command-forecast" class="subtab-panel panel"><div class="layout-grid"><article class="panel"><h2>Budget forecast</h2><div id="budget-forecast" class="scene-body"></div><div id="plan-panel" class="plan-panel"></div></article><article class="panel"><h2>STR/SAR tracker</h2><div id="str-tracker" class="scene-body"></div><h2>Seizure summary</h2><div id="seizure-summary" class="scene-body"></div></article></div></div>
     </section>
 
-    <section class="layout-grid lower-grid">
-      <article class="panel intelligence-panel">
-        <h2>Intelligence brief</h2>
-        <div id="intelligence-brief" class="scene-body"></div>
-      </article>
-
-      <article class="panel log-panel" aria-live="polite">
-        <div class="panel-heading">
-          <h2>Operations log</h2>
-          <span id="status-label" class="pill">Ready</span>
-        </div>
-        <ol id="operations-log" class="operations-log"></ol>
-      </article>
+    <section id="tab-arsenal" class="tab-panel">
+      <nav class="subtabs" aria-label="Arsenal sections"><button class="subtab active" data-subtab="controls" type="button">Controls</button><button class="subtab" data-subtab="technology" type="button">Technology</button><button class="subtab" data-subtab="staff" type="button">Staff</button></nav>
+      <div id="subtab-controls" class="subtab-panel active panel"><div class="panel-heading"><h2>Deploy countermeasures</h2><span class="pill">Controls</span></div><div id="countermeasure-list" class="countermeasure-list"></div></div>
+      <div id="subtab-technology" class="subtab-panel panel"><h2>Technology Roadmap</h2><div id="technology-panel" class="scene-body"></div></div>
+      <div id="subtab-staff" class="subtab-panel panel"><h2>Staffing</h2><div id="staff-panel" class="scene-body"></div></div>
     </section>
+
+    <section id="tab-threats" class="tab-panel"><article class="panel threat-panel"><div class="panel-heading"><h2>Active laundering typologies</h2><span class="pill">Heatmap</span></div><div id="typology-list" class="typology-list"></div></article></section>
+
+    <section id="tab-intel" class="tab-panel">
+      <nav class="subtabs" aria-label="Threat Intel sections"><button class="subtab active" data-subtab="intel-brief" type="button">Brief</button><button class="subtab" data-subtab="intel-actors" type="button">Actors</button><button class="subtab" data-subtab="intel-darkweb" type="button">Dark Web</button><button class="subtab" data-subtab="intel-history" type="button">History</button></nav>
+      <div id="subtab-intel-brief" class="subtab-panel active"><div class="layout-grid lower-grid"><article class="panel"><div id="regulatory-banner" class="regulatory-banner"></div><h2>Intelligence brief</h2><div id="intelligence-brief" class="scene-body"></div><h2>Money Flow</h2><div id="money-flow" class="scene-body"></div><h2>Placement → Layering → Integration</h2><div id="stage-flow" class="scene-body"></div></article><article class="panel log-panel" aria-live="polite"><div class="panel-heading"><h2>Incident Feed</h2><span class="pill">SOC live</span></div><ol id="incident-feed" class="operations-log"></ol><div class="panel-heading log-heading"><h2>Operations log</h2><span class="pill">Board record</span></div><ol id="operations-log" class="operations-log"></ol></article></div></div>
+      <div id="subtab-intel-actors" class="subtab-panel panel"><h2>Threat actor profiles</h2><div id="actor-profiles" class="actor-profiles"></div></div>
+      <div id="subtab-intel-darkweb" class="subtab-panel panel"><h2>Dark Web Intel</h2><div id="darkweb-feed" class="actor-profiles"></div></div>
+      <div id="subtab-intel-history" class="subtab-panel"><div class="layout-grid lower-grid"><article class="panel"><h2>Typology History</h2><div id="history-chart" class="scene-body"></div></article><article class="panel"><h2>Predicate offence linkage</h2><div id="predicate-map" class="scene-body"></div></article></div></div>
+    </section>
+
+    <section id="tab-world" class="tab-panel"><nav class="subtabs" aria-label="World sections"><button class="subtab active" data-subtab="world-map" type="button">Risk Map</button><button class="subtab" data-subtab="world-corridors" type="button">Corridors</button></nav><div id="subtab-world-map" class="subtab-panel active"><article class="panel"><h2>Geopolitical Risk Map</h2><div id="world-map" class="world-map"></div></article></div><div id="subtab-world-corridors" class="subtab-panel"><div class="layout-grid"><article class="panel"><h2>Corridor Tracker</h2><div id="corridor-tracker" class="scene-body"></div><h2>Correspondent Bank Registry</h2><div id="correspondent-registry" class="actor-profiles"></div></article></div></div></section>
+    <section id="tab-govern" class="tab-panel"><nav class="subtabs" aria-label="Govern sections"><button class="subtab active" data-subtab="govern-actions" type="button">Actions</button><button class="subtab" data-subtab="govern-policies" type="button">Policies</button><button class="subtab" data-subtab="govern-leaderboard" type="button">Leaderboard</button></nav><div id="subtab-govern-actions" class="subtab-panel active"><div class="layout-grid"><article class="panel"><h2>Governance Actions</h2><div id="govern-actions" class="scene-body"></div><h2>Compliance Calendar</h2><div id="compliance-calendar" class="scene-body"></div></article><article class="panel"><h2>Policy Library</h2><div id="policy-library" class="actor-profiles"></div></article></div></div><div id="subtab-govern-policies" class="subtab-panel panel"><h2>Policy Library (full)</h2><div id="policy-library-full" class="learn-grid"></div></div><div id="subtab-govern-leaderboard" class="subtab-panel"><div class="layout-grid"><article class="panel"><h2>Training Leaderboard</h2><div id="leaderboard" class="scene-body"></div></article><article class="panel"><h2>Competitive Leaderboard</h2><div id="competitive-board" class="scene-body"></div></article></div></div></section>
+    <section id="tab-career" class="tab-panel"><article class="panel"><h2>Career</h2><div id="career-panel" class="scene-body"></div></article></section>
+    <section id="tab-learn" class="tab-panel"><nav class="subtabs" aria-label="Learn sections"><button class="subtab active" data-subtab="learn-encyclopedia" type="button">Encyclopedia</button><button class="subtab" data-subtab="learn-predicate" type="button">Predicate Map</button></nav><div id="subtab-learn-encyclopedia" class="subtab-panel active panel"><div class="learn-search-wrap"><input id="learn-search-input" type="search" placeholder="Filter typologies by name or keyword..." /></div><div id="learn-panel" class="learn-grid"></div></div><div id="subtab-learn-predicate" class="subtab-panel panel"><h2>Predicate offence linkage</h2><div id="predicate-map-learn" class="scene-body"></div></div></section>
   </main>
 
-  <template id="metric-template">
-    <div class="metric-card">
-      <span class="metric-label"></span>
-      <strong class="metric-value"></strong>
-      <small class="metric-help"></small>
-    </div>
-  </template>
+  <div id="speed-dock" class="speed-dock" aria-label="Speed controls"><span>SPEED</span><button type="button" data-speed="0.25" class="speed-btn">0.25x</button><button type="button" data-speed="0.5" class="speed-btn">0.5x</button><button type="button" data-speed="1" class="speed-btn">1x</button><button type="button" data-speed="2" class="speed-btn">2x</button><button type="button" data-speed="4" class="speed-btn">4x</button><button type="button" id="dock-pause-btn" class="speed-btn">⏸</button></div>
+  <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+  <div id="modal-root" class="modal-root hidden"></div>
 
-  <template id="typology-template">
-    <article class="typology-card">
-      <div class="card-header">
-        <h3></h3>
-        <span class="risk-badge"></span>
-      </div>
-      <p class="typology-description"></p>
-      <div class="bar" aria-hidden="true"><span></span></div>
-      <dl></dl>
-    </article>
-  </template>
-
-  <template id="countermeasure-template">
-    <button type="button" class="countermeasure-card">
-      <span class="countermeasure-title"></span>
-      <span class="countermeasure-detail"></span>
-      <span class="countermeasure-meta"></span>
-    </button>
-  </template>
-
+  <template id="metric-template"><div class="metric-card"><span class="metric-label"></span><strong class="metric-value"></strong><small class="metric-help"></small></div></template>
+  <template id="typology-template"><article class="typology-card"><div class="card-header"><h3></h3><span class="risk-badge"></span></div><p class="typology-description"></p><div class="bar" aria-hidden="true"><span></span></div><dl></dl></article></template>
+  <template id="countermeasure-template"><button type="button" class="countermeasure-card"><span class="countermeasure-title"></span><span class="countermeasure-detail"></span><span class="countermeasure-meta"></span></button></template>
   <script src="game.js"></script>
 </body>
 </html>
