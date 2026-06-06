@@ -3,66 +3,168 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FinShield MLRO: Compliance Officer Training Game</title>
+  <title>Anti-Money Laundering Simulator</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main class="game-shell">
     <section class="hero-card" aria-labelledby="game-title">
-      <p class="eyebrow">Interactive training simulation</p>
-      <h1 id="game-title">FinShield MLRO: The Compliance Officer Life-Cycle</h1>
-      <p class="intro">
-        Interview for a regulated fintech role, build the second line of defence,
-        investigate financial-crime alerts, report to senior management, and face
-        the regulator. Decisions matter: your integrity, risk control, regulator
-        confidence, morale, and budget change as you play.
-      </p>
-      <div class="hero-actions">
-        <button id="start-button" type="button">Start new career</button>
-        <button id="restart-button" type="button" class="secondary">Restart</button>
-      </div>
-    </section>
-
-    <section class="dashboard" aria-label="Game dashboard">
-      <article class="panel profile-panel">
-        <h2>Role hierarchy</h2>
-        <ol id="hierarchy-list" class="hierarchy-list"></ol>
-      </article>
-
-      <article class="panel score-panel">
-        <h2>Decision scorecard</h2>
-        <div id="stats-grid" class="stats-grid"></div>
-      </article>
-    </section>
-
-    <section class="panel story-panel" aria-live="polite">
-      <div class="chapter-label" id="chapter-label">Awaiting start</div>
-      <h2 id="scene-title">Welcome to FinShield Bank & Payments</h2>
-      <div id="scene-body" class="scene-body">
-        <p>
-          You are about to experience the life-cycle of a compliance officer and
-          Money Laundering Reporting Officer (MLRO) in a fast-growing fintech
-          preparing for bank partnership scrutiny. Press start when you are ready.
+      <div class="hero-copy">
+        <p class="eyebrow">Financial-crime command simulation</p>
+        <h1 id="game-title">Anti-Money Laundering Simulator</h1>
+        <p class="intro">
+          Build a company, launch services, hire an AML army, and fight adaptive criminal networks exploiting
+          drugs, trafficking, sanctions evasion, terrorist financing, proliferation financing, cybercrime, and more.
         </p>
       </div>
-      <div id="duties-box" class="duties-box" hidden>
-        <h3>Duties in focus</h3>
-        <ul id="duties-list"></ul>
+      <div class="hero-actions" aria-label="Simulation controls">
+        <button id="start-button" type="button">Start</button>
+        <button id="pause-button" type="button" class="secondary">Pause</button>
+        <button id="save-button" type="button" class="secondary">Save</button>
+        <button id="load-button" type="button" class="secondary">Load</button>
+        <button id="restart-button" type="button" class="danger-button">Reset</button>
       </div>
-      <div id="choices" class="choices"></div>
     </section>
 
-    <section class="panel log-panel">
-      <h2>Career log</h2>
-      <ol id="career-log" class="career-log"></ol>
+    <section class="ticker-panel" aria-label="Live simulation ticker">
+      <span id="clock-label" class="ticker-chip">Day 1 · 08:00</span>
+      <span id="company-label" class="ticker-chip">No company selected</span>
+      <span id="status-label" class="ticker-chip">Ready</span>
+      <span id="threat-label" class="ticker-chip warning">AI pressure: Low</span>
+      <span id="runway-label" class="ticker-chip good">Runway: Stable</span>
+    </section>
+
+    <section id="metrics-grid" class="metrics-grid" aria-label="Economic metrics"></section>
+
+    <nav class="tabs" aria-label="Game sections">
+      <button class="tab active" type="button" data-tab="command">Command</button>
+      <button class="tab" type="button" data-tab="company">Company</button>
+      <button class="tab" type="button" data-tab="operations">Operations</button>
+      <button class="tab" type="button" data-tab="workforce">Workforce</button>
+      <button class="tab" type="button" data-tab="aml">AML Arsenal</button>
+      <button class="tab" type="button" data-tab="threats">Threat Intel</button>
+    </nav>
+
+    <section class="tab-panel active" data-panel="command">
+      <div class="dashboard-grid">
+        <article class="panel holo-panel">
+          <div class="panel-heading">
+            <h2>Executive war room</h2>
+            <span id="heat-label" class="pill">Economic heat: 0%</span>
+          </div>
+          <div id="intelligence-brief" class="scene-body"></div>
+        </article>
+        <article class="panel log-panel" aria-live="polite">
+          <div class="panel-heading">
+            <h2>Operations log</h2>
+            <span class="pill">Live feed</span>
+          </div>
+          <ol id="operations-log" class="operations-log"></ol>
+        </article>
+      </div>
+    </section>
+
+    <section class="tab-panel" data-panel="company">
+      <article class="panel">
+        <div class="panel-heading">
+          <h2>Choose your institution</h2>
+          <span class="pill">Company changes revenue, risk, and available options</span>
+        </div>
+        <div id="company-list" class="card-grid"></div>
+      </article>
+    </section>
+
+    <section class="tab-panel" data-panel="operations">
+      <article class="panel">
+        <div class="panel-heading">
+          <h2>Revenue engine</h2>
+          <span id="income-label" class="pill good">Income/tick $0</span>
+        </div>
+        <div class="subtabs" aria-label="Operations categories">
+          <button class="subtab active" type="button" data-subtab-group="operations" data-subtab="services">Services</button>
+          <button class="subtab" type="button" data-subtab-group="operations" data-subtab="products">Products</button>
+          <button class="subtab" type="button" data-subtab-group="operations" data-subtab="ops">Operations</button>
+        </div>
+        <div id="service-list" class="card-grid subtab-panel active" data-subtab-panel="operations:services"></div>
+        <div id="product-list" class="card-grid subtab-panel" data-subtab-panel="operations:products"></div>
+        <div id="operation-list" class="card-grid subtab-panel" data-subtab-panel="operations:ops"></div>
+      </article>
+    </section>
+
+    <section class="tab-panel" data-panel="workforce">
+      <article class="panel">
+        <div class="panel-heading">
+          <h2>Hire employees</h2>
+          <span id="staff-label" class="pill">0 staff · $0 payroll/tick</span>
+        </div>
+        <div class="subtabs" aria-label="Workforce categories">
+          <button class="subtab active" type="button" data-subtab-group="workforce" data-subtab="frontline">Front line</button>
+          <button class="subtab" type="button" data-subtab-group="workforce" data-subtab="specialist">Specialists</button>
+          <button class="subtab" type="button" data-subtab-group="workforce" data-subtab="leadership">Leadership</button>
+        </div>
+        <div id="frontline-staff-list" class="card-grid subtab-panel active" data-subtab-panel="workforce:frontline"></div>
+        <div id="specialist-staff-list" class="card-grid subtab-panel" data-subtab-panel="workforce:specialist"></div>
+        <div id="leadership-staff-list" class="card-grid subtab-panel" data-subtab-panel="workforce:leadership"></div>
+      </article>
+    </section>
+
+    <section class="tab-panel" data-panel="aml">
+      <article class="panel">
+        <div class="panel-heading">
+          <h2>AML / CTF / CPF arsenal</h2>
+          <span id="budget-label" class="pill">Budget $0</span>
+        </div>
+        <div class="subtabs" aria-label="AML categories">
+          <button class="subtab active" type="button" data-subtab-group="aml" data-subtab="prevent">Prevention</button>
+          <button class="subtab" type="button" data-subtab-group="aml" data-subtab="detect">Detection</button>
+          <button class="subtab" type="button" data-subtab-group="aml" data-subtab="disrupt">Disruption</button>
+          <button class="subtab" type="button" data-subtab-group="aml" data-subtab="govern">Governance</button>
+        </div>
+        <div id="prevent-control-list" class="card-grid subtab-panel active" data-subtab-panel="aml:prevent"></div>
+        <div id="detect-control-list" class="card-grid subtab-panel" data-subtab-panel="aml:detect"></div>
+        <div id="disrupt-control-list" class="card-grid subtab-panel" data-subtab-panel="aml:disrupt"></div>
+        <div id="govern-control-list" class="card-grid subtab-panel" data-subtab-panel="aml:govern"></div>
+      </article>
+    </section>
+
+    <section class="tab-panel" data-panel="threats">
+      <article class="panel threat-panel">
+        <div class="panel-heading">
+          <h2>Illicit activity map</h2>
+          <span class="pill warning">Typologies mutate as you scale</span>
+        </div>
+        <div id="threat-list" class="threat-list"></div>
+      </article>
     </section>
   </main>
 
-  <template id="choice-template">
-    <button type="button" class="choice-card">
-      <span class="choice-title"></span>
-      <span class="choice-detail"></span>
+  <template id="metric-template">
+    <article class="metric-card">
+      <span class="metric-label"></span>
+      <strong class="metric-value"></strong>
+      <small class="metric-help"></small>
+    </article>
+  </template>
+
+  <template id="action-template">
+    <button type="button" class="action-card">
+      <span class="action-kicker"></span>
+      <strong class="action-title"></strong>
+      <span class="action-detail"></span>
+      <span class="action-meta"></span>
     </button>
+  </template>
+
+  <template id="threat-template">
+    <article class="threat-card">
+      <div class="card-header">
+        <h3></h3>
+        <span class="risk-badge"></span>
+      </div>
+      <p class="threat-description"></p>
+      <div class="bar" aria-hidden="true"><span></span></div>
+      <dl></dl>
+    </article>
   </template>
 
   <script src="game.js"></script>
