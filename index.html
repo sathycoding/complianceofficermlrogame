@@ -3,117 +3,109 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Anti-Money Laundering Simulator</title>
+  <title>AML/CTF/CPF Simulator</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main class="game-shell">
     <section class="hero-card" aria-labelledby="game-title">
       <div>
-        <p class="eyebrow">Real-time economic crime strategy simulator</p>
-        <h1 id="game-title">Anti-Money Laundering Simulator</h1>
-        <p class="intro">
-          You are the Crime Stopper responsible for protecting a growing digital
-          economy. Revenue flows constantly, criminal networks adapt in real time,
-          and every countermeasure changes the balance between growth, trust, and
-          fraud/ML exposure.
-        </p>
+        <p class="eyebrow" data-i18n="eyebrow">Real-time economic crime strategy simulator</p>
+        <h1 id="game-title">AML/CTF/CPF Simulator</h1>
+        <p class="intro" data-i18n="intro">Protect a financial institution through a supervisory cycle while criminal networks adapt in real time.</p>
+        <div class="setup-panel" aria-label="Simulation setup">
+          <label>Scenario <select id="scenario-select"><option value="custom">Custom</option><option value="bahrainBrief">Bahrain Brief</option><option value="sandstorm">Sandstorm</option><option value="londonStandard">London Standard</option><option value="fincenFiles">FinCEN Files</option></select></label>
+          <label>Seed <input id="seed-input" type="text" value="aml-2026" /></label>
+          <label>Duration <select id="duration-select"><option value="30">30 days</option><option value="45" selected>45 days</option><option value="60">60 days</option><option value="90">90 days</option></select></label>
+          <label>Tick interval <select id="tick-interval-select"><option value="500">500ms (fast)</option><option value="1000" selected>1000ms (standard)</option><option value="2000">2000ms (slow)</option><option value="5000">5000ms (very slow)</option></select></label>
+          <label>Language <select id="language-select"><option value="en">English</option><option value="ar">Arabic (عربي)</option><option value="fr">French (Français)</option></select></label>
+          <label class="wide">Risk appetite <input id="risk-appetite-slider" type="range" min="30" max="80" value="55" /><output id="risk-appetite-output">55</output></label>
+          <p id="setup-flavour" class="setup-flavour">Configure the supervisory exercise before launch.</p>
+          <div id="scenario-briefing-card" class="scenario-card hidden"></div>
+        </div>
       </div>
       <div class="hero-actions" aria-label="Simulation controls">
-        <button id="start-button" type="button">Start simulation</button>
-        <button id="pause-button" type="button" class="secondary">Pause</button>
+        <button id="start-button" type="button" data-i18n="start">Start simulation</button>
+        <button id="pause-button" type="button" class="secondary" data-i18n="pause">Pause</button>
+        <button id="advisor-button" type="button" class="secondary">Advisor</button>
+        <button id="analysis-replay-button" type="button" class="secondary">Replay Analysis</button>
+        <button id="glossary-button" type="button" class="secondary">Glossary</button>
+        <button id="export-state-button" type="button" class="secondary">Export</button>
+        <button id="import-state-button" type="button" class="secondary">Import</button>
+        <input id="import-state-file" type="file" accept="application/json" hidden />
         <button id="save-button" type="button" class="secondary">Save</button>
         <button id="load-button" type="button" class="secondary">Load</button>
         <button id="restart-button" type="button" class="danger-button">Reset</button>
       </div>
     </section>
 
-    <section class="dashboard" aria-label="Economic dashboard">
-      <article class="panel score-panel">
-        <div class="panel-heading">
-          <h2>Economic command center</h2>
-          <span id="clock-label" class="pill">Day 1 · 08:00</span>
-        </div>
-        <div id="metrics-grid" class="metrics-grid"></div>
-      </article>
-
-      <article class="panel objective-panel">
-        <h2>Mission</h2>
-        <p>
-          Keep <strong>Fraud/ML</strong> as close to zero as possible while sustaining
-          legitimate revenue. Win by reaching Day 30 with a stable economy and
-          suppressed illicit activity; lose if fraud overwhelms public trust.
-        </p>
-        <ul class="mission-list">
-          <li><kbd>1</kbd>–<kbd>9</kbd>: deploy a countermeasure</li>
-          <li><kbd>Space</kbd>: pause or resume</li>
-          <li><kbd>S</kbd>: save · <kbd>L</kbd>: load</li>
-        </ul>
-      </article>
+    <section class="chrome-bar panel" aria-label="Current game status">
+      <span id="speed-status-dot" class="status-dot paused" aria-hidden="true"></span>
+      <span id="clock-label" class="pill">Day 1 of 45 · 08:00</span>
+      <span id="effective-speed-label" class="pill">1h/s</span>
+      <span id="status-label" class="pill">Ready</span>
+      <span id="budget-label" class="pill">Budget $0</span>
+      <span id="threat-label" class="pill warning">AI pressure: Low</span>
+    </section>
+    <div id="loss-warning-banner" class="loss-warning hidden"></div>
+    <div id="risk-appetite-banner" class="risk-appetite-banner hidden">Risk appetite breached — board escalation required.</div>
+    <section id="progress-bar" class="progress-strip" aria-label="Win and loss progress">
+      <div class="progress-item fraud"><label>Fraud/ML <span id="fraud-progress-text">0/160</span></label><div class="progress-track"><span id="fraud-progress-fill"></span></div></div>
+      <div class="progress-item trust"><label>Trust <span id="trust-progress-text">0/100</span></label><div class="progress-track"><span id="trust-progress-fill"></span></div></div>
+      <div class="progress-item day"><label>Day <span id="day-progress-text">1/45</span></label><div class="progress-track"><span id="day-progress-fill"></span></div></div>
     </section>
 
-    <section class="layout-grid">
-      <article class="panel threat-panel">
-        <div class="panel-heading">
-          <h2>Active laundering typologies</h2>
-          <span id="threat-label" class="pill warning">AI pressure: Low</span>
-        </div>
-        <div id="typology-list" class="typology-list"></div>
-      </article>
-
-      <article class="panel action-panel">
-        <div class="panel-heading">
-          <h2>Deploy countermeasures</h2>
-          <span id="budget-label" class="pill">Budget $0</span>
-        </div>
-        <div id="countermeasure-list" class="countermeasure-list"></div>
-      </article>
+    <section class="panel score-panel">
+      <div class="panel-heading"><h2>Economic command center</h2><span class="pill">Metrics</span></div>
+      <div id="metrics-grid" class="metrics-grid"></div>
     </section>
 
-    <section class="layout-grid lower-grid">
-      <article class="panel intelligence-panel">
-        <h2>Intelligence brief</h2>
-        <div id="intelligence-brief" class="scene-body"></div>
+    <nav class="tab-nav panel" aria-label="Main sections">
+      <button type="button" data-tab="command">Command</button><button type="button" data-tab="arsenal">Arsenal</button><button type="button" data-tab="threats">Threats</button><button type="button" data-tab="intel">Threat Intel</button><button type="button" data-tab="world">World</button><button type="button" data-tab="govern">Govern</button><button type="button" data-tab="career">Career</button><button type="button" data-tab="learn">Learn</button>
+    </nav>
+    <section id="campaign-progress" class="campaign-progress hidden"></section>
+
+    <section class="tabs-shell">
+      <article id="tab-command" class="tab-panel panel" data-tab-panel="command">
+        <div class="subtabs"><button type="button" data-subtab="command-overview">Overview</button><button type="button" data-subtab="command-cases">Cases <span id="case-count-badge" class="badge">0</span></button><button type="button" data-subtab="command-forecast">Forecast</button></div>
+        <div class="subtab-panel" data-subtab-panel="command-overview"><div class="panel-grid"><section id="mission-control" class="mini-panel"></section><section id="alert-queue-visual" class="mini-panel"></section><section id="str-tracker" class="mini-panel"></section><section id="regulator-panel" class="mini-panel"></section><section id="peer-benchmark-panel" class="mini-panel"></section><section id="seizure-tracker" class="mini-panel"></section></div></div>
+        <div class="subtab-panel" data-subtab-panel="command-cases"><section id="case-room" class="mini-panel"></section></div>
+        <div class="subtab-panel" data-subtab-panel="command-forecast"><div class="panel-grid"><section id="burn-rate-panel" class="mini-panel"></section><section id="plan-panel" class="mini-panel"></section><section id="calendar-preview" class="mini-panel"></section></div></div>
       </article>
 
-      <article class="panel log-panel" aria-live="polite">
-        <div class="panel-heading">
-          <h2>Operations log</h2>
-          <span id="status-label" class="pill">Ready</span>
-        </div>
-        <ol id="operations-log" class="operations-log"></ol>
+      <article id="tab-arsenal" class="tab-panel panel" data-tab-panel="arsenal">
+        <div class="subtabs"><button type="button" data-subtab="arsenal-controls">Controls</button><button type="button" data-subtab="arsenal-technology">Technology</button><button type="button" data-subtab="arsenal-staff">Staff</button></div>
+        <div class="subtab-panel" data-subtab-panel="arsenal-controls"><section id="portfolio-summary" class="mini-panel"></section><div id="countermeasure-list" class="countermeasure-list"></div></div>
+        <div class="subtab-panel" data-subtab-panel="arsenal-technology"><section id="tech-tree" class="mini-panel"></section></div>
+        <div class="subtab-panel" data-subtab-panel="arsenal-staff"><section id="burnout-panel" class="mini-panel"></section><div id="employee-list" class="panel-grid"></div></div>
       </article>
+
+      <article id="tab-threats" class="tab-panel panel" data-tab-panel="threats"><div id="mutation-banner" class="mutation-banner hidden"></div><div id="auction-countdown" class="auction-countdown hidden"></div><div id="heatmap-sort" class="sort-row"></div><div id="typology-list" class="typology-list"></div><div id="typology-detail" class="sr-only"></div></article>
+
+      <article id="tab-intel" class="tab-panel panel" data-tab-panel="intel">
+        <div class="subtabs"><button type="button" data-subtab="intel-brief">Brief</button><button type="button" data-subtab="intel-actors">Actors</button><button type="button" data-subtab="intel-darkweb">Dark Web</button><button type="button" data-subtab="intel-history">History</button></div>
+        <div class="subtab-panel" data-subtab-panel="intel-brief"><section id="regulatory-banner" class="mini-panel"></section><section id="intelligence-brief" class="mini-panel scene-body"></section><section id="transaction-flow-panel" class="mini-panel"></section></div>
+        <div class="subtab-panel" data-subtab-panel="intel-actors"><div id="actor-profiles" class="panel-grid"></div></div>
+        <div class="subtab-panel" data-subtab-panel="intel-darkweb"><div id="darkweb-feed" class="darkweb-feed"></div></div>
+        <div class="subtab-panel" data-subtab-panel="intel-history"><div class="history-grid"><section id="history-chart" class="mini-panel"></section><section id="incident-feed" class="mini-panel"></section><section class="mini-panel log-panel"><h2>Operations log</h2><ol id="operations-log" class="operations-log"></ol></section></div></div>
+      </article>
+
+      <article id="tab-world" class="tab-panel panel" data-tab-panel="world"><div class="subtabs"><button type="button" data-subtab="world-map">Risk Map</button><button type="button" data-subtab="world-corridors">Corridors</button></div><div class="subtab-panel" data-subtab-panel="world-map"><section id="world-map" class="mini-panel"></section></div><div class="subtab-panel" data-subtab-panel="world-corridors"><section id="corridor-tracker" class="mini-panel"></section><section id="correspondent-registry" class="mini-panel"></section><section id="correspondent-history" class="mini-panel"></section></div></article>
+      <article id="tab-govern" class="tab-panel panel" data-tab-panel="govern"><div class="subtabs"><button type="button" data-subtab="govern-actions">Actions</button><button type="button" data-subtab="govern-policies">Policies</button><button type="button" data-subtab="govern-leaderboard">Leaderboard</button></div><div class="subtab-panel" data-subtab-panel="govern-actions"><section id="governance-actions" class="mini-panel"></section><section id="compliance-calendar" class="mini-panel"></section></div><div class="subtab-panel" data-subtab-panel="govern-policies"><section id="policy-library" class="mini-panel"></section></div><div class="subtab-panel" data-subtab-panel="govern-leaderboard"><div class="panel-grid"><section id="training-leaderboard" class="mini-panel"></section><section id="competitive-leaderboard" class="mini-panel"></section></div></div></article>
+      <article id="tab-career" class="tab-panel panel" data-tab-panel="career"><section id="career-records" class="mini-panel"></section><button id="restart-tutorial-button" type="button">Restart tutorial</button></article>
+      <article id="tab-learn" class="tab-panel panel" data-tab-panel="learn"><div class="subtabs"><button type="button" data-subtab="learn-encyclopedia">Encyclopedia</button><button type="button" data-subtab="learn-predicate">Predicate Map</button></div><div class="subtab-panel" data-subtab-panel="learn-encyclopedia"><input id="learn-search" class="filter-input" type="search" placeholder="Filter typology cards..." /><div id="learn-grid" class="panel-grid"></div></div><div class="subtab-panel" data-subtab-panel="learn-predicate"><section id="predicate-map" class="mini-panel"></section></div></article>
     </section>
   </main>
 
-  <template id="metric-template">
-    <div class="metric-card">
-      <span class="metric-label"></span>
-      <strong class="metric-value"></strong>
-      <small class="metric-help"></small>
-    </div>
-  </template>
+  <div id="speed-dock" class="speed-dock" aria-label="Speed controls"></div>
+  <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+  <div id="modal-root" class="modal-root hidden" role="dialog" aria-modal="true"></div>
+  <aside id="typology-slideout" class="slideout" aria-hidden="true"></aside>
+  <div id="tutorial-overlay" class="tutorial-overlay hidden"></div>
+  <div id="report-template" hidden></div>
 
-  <template id="typology-template">
-    <article class="typology-card">
-      <div class="card-header">
-        <h3></h3>
-        <span class="risk-badge"></span>
-      </div>
-      <p class="typology-description"></p>
-      <div class="bar" aria-hidden="true"><span></span></div>
-      <dl></dl>
-    </article>
-  </template>
-
-  <template id="countermeasure-template">
-    <button type="button" class="countermeasure-card">
-      <span class="countermeasure-title"></span>
-      <span class="countermeasure-detail"></span>
-      <span class="countermeasure-meta"></span>
-    </button>
-  </template>
-
+  <template id="metric-template"><div class="metric-card"><span class="metric-label"></span><strong class="metric-value"></strong><svg class="sparkline" viewBox="0 0 40 16" aria-hidden="true"></svg><small class="metric-help"></small></div></template>
+  <template id="countermeasure-template"><button type="button" class="countermeasure-card"><span class="countermeasure-title"></span><span class="countermeasure-detail"></span><span class="countermeasure-meta"></span><span class="freshness-bar"><span></span></span><small class="refresh-label"></small></button></template>
   <script src="game.js"></script>
 </body>
 </html>
